@@ -33,6 +33,16 @@ go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 export PATH="$PATH:$(go env GOPATH)/bin"
 ```
 
+### abigen
+
+```bash
+# install abigen in go-ethereum
+go get -u github.com/ethereum/go-ethereum
+cd $GOPATH/src/github.com/ethereum/go-ethereum/
+make
+make devtools
+```
+
 ## Compile contracts
 
 ```bash
