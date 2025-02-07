@@ -47,7 +47,7 @@ make devtools
 
 ```bash
 # generate abi and bin for contract SR2PC
-solc --abi --bin -o output ../SuperRunner-contracts/contracts/2pc-master/SR2PC.sol --allow-paths .
+solc --abi --bin --overwrite --optimize --optimize-runs 200 -o output ../SuperRunner-contracts/contracts/2pc-master/SR2PC.sol --allow-paths .
 # generate .go
 mkdir SR2PC
 abigen --bin=output/SR2PC.bin --abi=output/SR2PC.abi --pkg=SR2PC --out=SR2PC/SR2PC.go
