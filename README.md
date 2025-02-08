@@ -52,3 +52,9 @@ solc --abi --bin --overwrite --optimize --optimize-runs 200 -o output ../SuperRu
 mkdir SR2PC
 abigen --bin=output/SR2PC.bin --abi=output/SR2PC.abi --pkg=SR2PC --out=SR2PC/SR2PC.go
 ```
+
+## start geth dev mode
+
+```bash 
+geth --dev --dev.period 0 --keystore ./node/keystore --allow-insecure-unlock --http --http.api eth,web3,net,miner,txpool,admin --ws --ws.api eth,web3,net
+```
