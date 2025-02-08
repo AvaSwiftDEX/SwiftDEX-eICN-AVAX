@@ -6,22 +6,25 @@ import (
 	"io"
 	"net/http"
 	"sync"
+	"github.com/kimroniny/SuperRunner-eICN-eth2/sdk"
 )
 
 // Transmitter 结构体定义 HTTP 服务器
 type Transmitter struct {
-	port    string
-	storage map[string]int
-	mutex   sync.Mutex
-	wg      *sync.WaitGroup
+	port        string
+	storage     map[string]int
+	mutex       sync.Mutex
+	wg          *sync.WaitGroup
+	contractSDK *sdk.ContractSDK
 }
 
 // NewTransmitter 创建一个新的 Transmitter 实例
-func NewTransmitter(port string, wg *sync.WaitGroup) *Transmitter {
+func NewTransmitter(port string, wg *sync.WaitGroup, contractSDK *sdk.ContractSDK) *Transmitter {
 	return &Transmitter{
-		port:    port,
-		storage: make(map[string]int),
-		wg:      wg,
+		port:        port,
+		storage:     make(map[string]int),
+		wg:          wg,
+		contractSDK: contractSDK,
 	}
 }
 
@@ -43,7 +46,7 @@ type ResponseBody struct {
 	Message string `json:"message,omitempty"`
 }
 
-// CrossReceive 处理 HTTP 请求
+// CrossReceive 处理 HTTP 请求，并将数据传输到 ContractSDK
 func (t *Transmitter) CrossReceive(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -66,17 +69,15 @@ func (t *Transmitter) CrossReceive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 模拟处理逻辑：确保两个字节数组不为空
-	if len(req.Data1) == 0 || len(req.Data2) == 0 {
-		response := ResponseBody{Success: false, Message: "Both byte arrays must be provided"}
-		json.NewEncoder(w).Encode(response)
-		return
-	}
+	// 将数据发送到 ContractSDK
+	t.contractSDK.TransmitterCrossReceive(req.Data1, req.Data2)
 
 	// 返回成功响应
 	response := ResponseBody{Success: true}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }
 
 // RegisterEICN 处理注册 URL 和 ChainID
@@ -104,20 +105,24 @@ func (t *Transmitter) RegisterEICN(w http.ResponseWriter, r *http.Request) {
 
 	// 存储数据
 	t.mutex.Lock()
+	defer t.mutex.Unlock()
 	t.storage[req.URL] = req.ChainID
-	t.mutex.Unlock()
 
 	// 返回成功响应
 	response := ResponseBody{Success: true}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }
 
-// Start 启动 HTTP 服务器（协程方式）
-func (t *Transmitter) Start() {
+// StartServer 启动 HTTP 服务器（协程方式）
+func (t *Transmitter) StartServer() {
 	defer t.wg.Done()
 	http.HandleFunc("/CrossReceive", t.CrossReceive)
 	http.HandleFunc("/registerEICN", t.RegisterEICN)
 	fmt.Printf("Server is running on port %s...\n", t.port)
-	http.ListenAndServe(":"+t.port, nil)
+	if err := http.ListenAndServe(":"+t.port, nil); err != nil {
+		fmt.Printf("Failed to start server: %v\n", err)
+	}
 }
