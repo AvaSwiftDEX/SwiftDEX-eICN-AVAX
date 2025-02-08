@@ -9,11 +9,8 @@ import (
 	"log"
 	"math/big"
 	"os"
-	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
@@ -238,37 +235,6 @@ func MonitorBlock(ctx context.Context, ws_client *ethclientext.EthclientExt, cli
 			fmt.Println(block.Time())              // 1529525947
 			fmt.Println(block.Nonce())             // 130524141876765836
 			fmt.Println(len(block.Transactions())) // 7
-		}
-	}
-}
-
-func MonitorEventNative(ctx context.Context, address common.Address, ws_client *ethclientext.EthclientExt, client *ethclientext.EthclientExt) {
-	query := ethereum.FilterQuery{
-		Addresses: []common.Address{address},
-	}
-
-	logs := make(chan types.Log)
-	sub, err := ws_client.SubscribeFilterLogs(ctx, query, logs)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	contractAbi, err := abi.JSON(strings.NewReader(string(SR2PC.SR2PCABI)))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for {
-		select {
-		case err := <-sub.Err():
-			log.Fatal(err)
-		case vLog := <-logs:
-			event, err := contractAbi.Unpack("SendCMHash", vLog.Data)
-			if err != nil {
-				fmt.Println("unpack event error: ", err)
-			}
-			fmt.Println("event: ", event)
-			fmt.Println(vLog) // pointer to event log
 		}
 	}
 }
