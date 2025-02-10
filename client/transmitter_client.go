@@ -5,13 +5,26 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
+
+	"github.com/ethereum/go-ethereum/common"
 )
+
+// ITransmitterClient 定义了 Transmitter 客户端的接口
+type ITransmitterClient interface {
+	CrossReceive(data1, data2 []byte) error
+	RegisterEICN(url string, chainID int) error
+	SyncHeader(chainID *big.Int, number *big.Int, root common.Hash) error
+}
 
 // TransmitterClient 结构体用于与 Transmitter 服务器通信
 type TransmitterClient struct {
 	baseURL string
 }
+
+// 确保 TransmitterClient 实现了 ITransmitterClient 接口
+var _ ITransmitterClient = (*TransmitterClient)(nil)
 
 // NewTransmitterClient 创建一个新的 TransmitterClient 实例
 func NewTransmitterClient(host string, port string) *TransmitterClient {
@@ -40,9 +53,9 @@ type ResponseBody struct {
 
 // RequestHeader 结构体表示 SyncHeader 请求参数
 type RequestHeader struct {
-	ChainID int      `json:"chainId"`
-	Number  uint64   `json:"number"`
-	Root    [32]byte `json:"root"`
+	ChainID *big.Int    `json:"chainId"`
+	Number  *big.Int    `json:"number"`
+	Root    common.Hash `json:"root"`
 }
 
 // CrossReceive 发送跨链数据到服务器
@@ -116,7 +129,7 @@ func (c *TransmitterClient) RegisterEICN(url string, chainID int) error {
 }
 
 // SyncHeader 发送区块头同步数据到服务器
-func (c *TransmitterClient) SyncHeader(chainID int, number uint64, root [32]byte) error {
+func (c *TransmitterClient) SyncHeader(chainID *big.Int, number *big.Int, root common.Hash) error {
 	reqBody := RequestHeader{
 		ChainID: chainID,
 		Number:  number,

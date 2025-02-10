@@ -2,9 +2,12 @@ package client
 
 import (
 	"encoding/json"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 func TestTransmitterClient_CrossReceive(t *testing.T) {
@@ -90,10 +93,9 @@ func TestTransmitterClient_SyncHeader(t *testing.T) {
 	client := &TransmitterClient{baseURL: server.URL}
 
 	// 测试数据
-	chainID := 1
-	number := uint64(100)
-	var root [32]byte
-	copy(root[:], []byte("test root data"))
+	chainID := big.NewInt(1)
+	number := big.NewInt(100)
+	root := common.HexToHash("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
 
 	// 执行测试
 	err := client.SyncHeader(chainID, number, root)
@@ -141,8 +143,8 @@ func TestTransmitterClient_ErrorHandling(t *testing.T) {
 	}
 
 	// 测试 SyncHeader 错误处理
-	var root [32]byte
-	err = client.SyncHeader(1, 100, root)
+	root := common.HexToHash("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
+	err = client.SyncHeader(big.NewInt(1), big.NewInt(100), root)
 	if err == nil {
 		t.Error("期望 SyncHeader 返回错误，但得到 nil")
 	}
