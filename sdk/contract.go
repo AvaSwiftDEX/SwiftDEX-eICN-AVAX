@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"encoding/hex"
 	"fmt"
 )
 
@@ -10,17 +11,26 @@ type CrossData struct {
 	Proof []byte
 }
 
+// block header
+type HeaderData struct {
+	chainId int
+	number  uint64
+	root    [32]byte
+}
+
 // ContractSDK 结构体
 type ContractSDK struct {
-	Serv2SDK chan CrossData // 容量为1024的通道
-	Stop     chan struct{}  // 停止信号通道
+	Serv2SDK_CM  chan *CrossData  // 容量为1024的通道
+	Serv2SDK_HDR chan *HeaderData // 容量为1025的通道
+	Stop         chan struct{}   // 停止信号通道
 }
 
 // NewContractSDK 创建一个新的 ContractSDK 实例
 func NewContractSDK() *ContractSDK {
 	return &ContractSDK{
-		Serv2SDK: make(chan CrossData, 1024),
-		Stop:     make(chan struct{}),
+		Serv2SDK_CM:  make(chan *CrossData, 1024),
+		Serv2SDK_HDR: make(chan *HeaderData, 1024),
+		Stop:         make(chan struct{}),
 	}
 }
 
@@ -28,8 +38,10 @@ func NewContractSDK() *ContractSDK {
 func (sdk *ContractSDK) Run() {
 	for {
 		select {
-		case data := <-sdk.Serv2SDK:
-			sdk.CrossReceive(data.Cm, data.Proof)
+		case data := <-sdk.Serv2SDK_CM:
+			sdk.CrossReceive(data)
+		case data := <-sdk.Serv2SDK_HDR:
+			sdk.SyncHeader(data)
 		case <-sdk.Stop:
 			fmt.Println("Stopping ContractSDK...")
 			return
@@ -38,11 +50,19 @@ func (sdk *ContractSDK) Run() {
 }
 
 // CrossReceive 处理通道收到的数据（具体逻辑稍后确定）
-func (sdk *ContractSDK) CrossReceive(cm []byte, proof []byte) {
-	fmt.Println("Received data:", string(cm), string(proof))
+func (sdk *ContractSDK) CrossReceive(data *CrossData) {
+	fmt.Println("Received CM and proof data:", string(data.Cm), string(data.Proof))
 }
 
 // TransmitterCrossReceive 用于 server.Transmitter 调用，将数据发送到 ContractSDK
 func (sdk *ContractSDK) TransmitterCrossReceive(cm []byte, proof []byte) {
-	sdk.Serv2SDK <- CrossData{Cm: cm, Proof: proof}
+	sdk.Serv2SDK_CM <- &CrossData{Cm: cm, Proof: proof}
+}
+
+func (sdk *ContractSDK) SyncHeader(data *HeaderData) {
+	fmt.Printf("Received Header data: %s\n", hex.EncodeToString(data.root[:]))
+}
+
+func (sdk *ContractSDK) TransmitterSyncHeader(chainId int, number uint64, root [32]byte) {
+	sdk.Serv2SDK_HDR <- &HeaderData{chainId: chainId, number: number, root: root}
 }
