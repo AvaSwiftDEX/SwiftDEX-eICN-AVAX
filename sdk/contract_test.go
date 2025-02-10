@@ -1,12 +1,33 @@
 package sdk
 
 import (
+	"context"
+	"math/big"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
+// 创建测试所需的通用参数
+func setupTestSDK(t *testing.T) *ContractSDK {
+	// 创建私钥
+	privateKey, err := crypto.GenerateKey()
+	if err != nil {
+		t.Fatalf("无法生成私钥: %v", err)
+	}
+
+	ctx := context.Background()
+	url := "http://localhost:8545"                          // 测试用URL
+	chainId := big.NewInt(1)                                // 测试用chainId
+	address := "0x742d35Cc6634C0532925a3b844Bc454e4438f44e" // 测试用合约地址
+
+	return NewContractSDK(ctx, url, chainId, address, privateKey)
+}
+
 func TestContractSDK_Run(t *testing.T) {
-	sdk := NewContractSDK()
+	sdk := setupTestSDK(t)
 
 	// 启动 ContractSDK 监听协程
 	go sdk.Run()
@@ -24,7 +45,7 @@ func TestContractSDK_Run(t *testing.T) {
 }
 
 func TestContractSDK_TransmitterCrossReceive(t *testing.T) {
-	sdk := NewContractSDK()
+	sdk := setupTestSDK(t)
 
 	// 启动监听协程
 	go sdk.Run()
@@ -43,16 +64,15 @@ func TestContractSDK_TransmitterCrossReceive(t *testing.T) {
 
 // 添加新的测试函数
 func TestContractSDK_TransmitterSyncHeader(t *testing.T) {
-	sdk := NewContractSDK()
+	sdk := setupTestSDK(t)
 
 	// 启动监听协程
 	go sdk.Run()
 
 	// 发送测试数据
-	chainId := 1
-	number := uint64(100)
-	var root [32]byte
-	copy(root[:], []byte("test_root_hash_bytes_32_length__"))
+	chainId := big.NewInt(1)
+	number := big.NewInt(100)
+	root := common.HexToHash("0x1234567890123456789012345678901234567890123456789012345678901234")
 	sdk.TransmitterSyncHeader(chainId, number, root)
 
 	// 等待数据处理
@@ -64,7 +84,7 @@ func TestContractSDK_TransmitterSyncHeader(t *testing.T) {
 
 // 添加组合测试函数
 func TestContractSDK_MultipleOperations(t *testing.T) {
-	sdk := NewContractSDK()
+	sdk := setupTestSDK(t)
 
 	// 启动监听协程
 	go sdk.Run()
@@ -75,10 +95,9 @@ func TestContractSDK_MultipleOperations(t *testing.T) {
 	sdk.TransmitterCrossReceive(cm, proof)
 
 	// 发送区块头数据
-	chainId := 1
-	number := uint64(100)
-	var root [32]byte
-	copy(root[:], []byte("test_root_hash_bytes_32_length__"))
+	chainId := big.NewInt(1)
+	number := big.NewInt(100)
+	root := common.HexToHash("0x1234567890123456789012345678901234567890123456789012345678901234")
 	sdk.TransmitterSyncHeader(chainId, number, root)
 
 	// 等待数据处理
