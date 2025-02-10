@@ -1,10 +1,14 @@
 package config
 
 import (
+	"crypto/ecdsa"
+	"encoding/hex"
 	"math/big"
 	"os"
 	"path/filepath"
 
+	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/crypto"
 	"gopkg.in/yaml.v3"
 )
 
@@ -25,6 +29,18 @@ type Config struct {
 		UseFile bool     `yaml:"use_file"`
 		Address string   `yaml:"address,omitempty"`
 	} `yaml:"chain"`
+}
+
+func readPrivateKey(keyFile string) (*ecdsa.PrivateKey, error) {
+	key, err := os.ReadFile(keyFile)
+	if err != nil {
+		return nil, err
+	}
+	account, err := keystore.DecryptKey(key, "")
+	if err != nil {
+		return nil, err
+	}
+	return account.PrivateKey, nil
 }
 
 // LoadConfig 从文件加载配置
@@ -49,6 +65,14 @@ func LoadConfig(filename string) (*Config, error) {
 		return nil, err
 	}
 
+	// update privateKeyHex if useFile is true
+	if config.Chain.UseFile {
+		privateKey, err := readPrivateKey(config.Chain.KeyFile)
+		if err != nil {
+			return nil, err
+		}
+		config.Chain.KeyHex = hex.EncodeToString(crypto.FromECDSA(privateKey))[2:]
+	}
 	return config, nil
 }
 
