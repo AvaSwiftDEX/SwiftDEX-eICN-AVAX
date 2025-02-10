@@ -9,3 +9,4 @@ chain:
   key_file: "node/keystore/UTC--2025-02-08T06-12-23.376721660Z--a8a410a56f93e14fb5a71f5968958851915b6909"
   key_hex: "c45ba5d6de0e502aefd23c98b40a2c9018e2e0286dde4fdb542ded619cefc8bd"
   use_file: true
+  address: ""

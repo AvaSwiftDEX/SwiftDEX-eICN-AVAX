@@ -1,6 +1,7 @@
 package config
 
 import (
+	"math/big"
 	"os"
 	"path/filepath"
 
@@ -16,12 +17,13 @@ type Config struct {
 	} `yaml:"http"`
 
 	Chain struct {
-		ID      int64  `yaml:"id"`
-		HTTPURL string `yaml:"http_url"`
-		WSURL   string `yaml:"ws_url"`
-		KeyFile string `yaml:"key_file"`
-		KeyHex  string `yaml:"key_hex"`
-		UseFile bool   `yaml:"use_file"`
+		ID      *big.Int `yaml:"id"`
+		HTTPURL string   `yaml:"http_url"`
+		WSURL   string   `yaml:"ws_url"`
+		KeyFile string   `yaml:"key_file"`
+		KeyHex  string   `yaml:"key_hex"`
+		UseFile bool     `yaml:"use_file"`
+		Address string   `yaml:"address,omitempty"`
 	} `yaml:"chain"`
 }
 
@@ -69,12 +71,13 @@ func createDefaultConfig(filename string) (*Config, error) {
 	config.HTTP.Host = "127.0.0.1"
 	config.HTTP.BaseURL = "http://127.0.0.1:8080"
 
-	config.Chain.ID = 1
+	config.Chain.ID = big.NewInt(1)
 	config.Chain.HTTPURL = "http://127.0.0.1:8545"
 	config.Chain.WSURL = "ws://127.0.0.1:8546"
 	config.Chain.KeyFile = "node/keystore/UTC--2025-02-08T06-12-23.376721660Z--a8a410a56f93e14fb5a71f5968958851915b6909"
 	config.Chain.KeyHex = "c45ba5d6de0e502aefd23c98b40a2c9018e2e0286dde4fdb542ded619cefc8bd"
 	config.Chain.UseFile = true
+	config.Chain.Address = ""
 
 	// 保存默认配置到文件
 	if err := config.SaveConfig(filename); err != nil {
