@@ -33,6 +33,7 @@ func (ecext *EthclientExt) Accounts(ctx context.Context) ([]common.Address, erro
 }
 
 func (ec *EthclientExt) SendWrapTransaction(ctx context.Context, tx *types.Transaction) error {
+	// TODO: send Transaction without signature
 	data, err := tx.MarshalBinary()
 	if err != nil {
 		return err
