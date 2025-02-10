@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"sync"
+
 	"github.com/kimroniny/SuperRunner-eICN-eth2/sdk"
 )
 
@@ -28,6 +29,12 @@ func NewTransmitter(port string, wg *sync.WaitGroup, contractSDK *sdk.ContractSD
 	}
 }
 
+type RequestHeader struct {
+	ChainID int    `json:"chainId"`
+	Number  uint64 `json:"number"`
+	Root    [32]byte `json:"root"`
+}
+
 // RequestBody 结构体表示请求参数
 type RequestBody struct {
 	Data1 []byte `json:"data1"`
@@ -44,6 +51,39 @@ type RegisterRequest struct {
 type ResponseBody struct {
 	Success bool   `json:"success"`
 	Message string `json:"message,omitempty"`
+}
+
+func (t *Transmitter) SyncHeader(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// 读取请求体
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	// 解析 JSON
+	var req RequestHeader
+	err = json.Unmarshal(body, &req)
+	if err != nil {
+		http.Error(w, "Invalid JSON format", http.StatusBadRequest)
+		return
+	}
+
+	// 将数据发送到 ContractSDK
+	t.contractSDK.TransmitterSyncHeader(req.ChainID, req.Number, req.Root)
+
+	// 返回成功响应
+	response := ResponseBody{Success: true}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }
 
 // CrossReceive 处理 HTTP 请求，并将数据传输到 ContractSDK
