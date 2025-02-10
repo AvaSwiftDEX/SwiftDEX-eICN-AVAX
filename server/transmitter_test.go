@@ -2,18 +2,37 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/sdk"
 )
 
+// 创建测试所需的通用参数
+func setupTestSDK(t *testing.T) *sdk.ContractSDK {
+	privateKey, err := crypto.GenerateKey()
+	if err != nil {
+		t.Fatalf("无法生成私钥: %v", err)
+	}
+
+	ctx := context.Background()
+	url := "http://localhost:8545"                          // 测试用URL
+	chainId := big.NewInt(1)                                // 测试用chainId
+	address := "0x742d35Cc6634C0532925a3b844Bc454e4438f44e" // 测试用合约地址
+
+	return sdk.NewContractSDK(ctx, url, chainId, address, privateKey)
+}
+
 func TestCrossReceive(t *testing.T) {
 	wg := &sync.WaitGroup{}
-	contractSDK := sdk.NewContractSDK()
+	contractSDK := setupTestSDK(t)
 	transmitter := NewTransmitter("8080", wg, contractSDK)
 
 	requestBody, _ := json.Marshal(RequestBody{
@@ -35,12 +54,12 @@ func TestCrossReceive(t *testing.T) {
 
 func TestRegisterEICN(t *testing.T) {
 	wg := &sync.WaitGroup{}
-	contractSDK := sdk.NewContractSDK()
+	contractSDK := setupTestSDK(t)
 	transmitter := NewTransmitter("8080", wg, contractSDK)
 
 	requestBody, _ := json.Marshal(RegisterRequest{
 		URL:     "http://example.com",
-		ChainID: 123,
+		ChainID: big.NewInt(123),
 	})
 
 	r := httptest.NewRequest(http.MethodPost, "/registerEICN", bytes.NewReader(requestBody))
@@ -57,7 +76,7 @@ func TestRegisterEICN(t *testing.T) {
 
 func TestTransmitterCrossReceiveIntegration(t *testing.T) {
 	wg := &sync.WaitGroup{}
-	contractSDK := sdk.NewContractSDK()
+	contractSDK := setupTestSDK(t)
 	transmitter := NewTransmitter("8080", wg, contractSDK)
 
 	go contractSDK.Run()
@@ -83,13 +102,13 @@ func TestTransmitterCrossReceiveIntegration(t *testing.T) {
 
 func TestSyncHeader(t *testing.T) {
 	wg := &sync.WaitGroup{}
-	contractSDK := sdk.NewContractSDK()
+	contractSDK := setupTestSDK(t)
 	transmitter := NewTransmitter("8080", wg, contractSDK)
 
 	requestBody, _ := json.Marshal(RequestHeader{
-		ChainID: 1,
-		Number:  uint64(123),
-		Root:    [32]byte{1, 2, 3}, // 示例root值
+		ChainID: big.NewInt(1),
+		Number:  big.NewInt(123),
+		Root:    common.HexToHash("0x1234567890123456789012345678901234567890123456789012345678901234"),
 	})
 
 	r := httptest.NewRequest(http.MethodPost, "/SyncHeader", bytes.NewReader(requestBody))
@@ -115,7 +134,7 @@ func TestSyncHeader(t *testing.T) {
 
 func TestInvalidMethod(t *testing.T) {
 	wg := &sync.WaitGroup{}
-	contractSDK := sdk.NewContractSDK()
+	contractSDK := setupTestSDK(t)
 	transmitter := NewTransmitter("8080", wg, contractSDK)
 
 	// 测试 SyncHeader 的 GET 请求
@@ -148,7 +167,7 @@ func TestInvalidMethod(t *testing.T) {
 
 func TestInvalidJSON(t *testing.T) {
 	wg := &sync.WaitGroup{}
-	contractSDK := sdk.NewContractSDK()
+	contractSDK := setupTestSDK(t)
 	transmitter := NewTransmitter("8080", wg, contractSDK)
 
 	invalidJSON := []byte(`{"invalid json`)

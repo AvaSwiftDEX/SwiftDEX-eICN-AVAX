@@ -4,16 +4,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/sdk"
 )
 
 // Transmitter 结构体定义 HTTP 服务器
 type Transmitter struct {
 	port        string
-	storage     map[string]int
+	storage     map[string]*big.Int
 	mutex       sync.Mutex
 	wg          *sync.WaitGroup
 	contractSDK *sdk.ContractSDK
@@ -23,16 +25,16 @@ type Transmitter struct {
 func NewTransmitter(port string, wg *sync.WaitGroup, contractSDK *sdk.ContractSDK) *Transmitter {
 	return &Transmitter{
 		port:        port,
-		storage:     make(map[string]int),
+		storage:     make(map[string]*big.Int),
 		wg:          wg,
 		contractSDK: contractSDK,
 	}
 }
 
 type RequestHeader struct {
-	ChainID int    `json:"chainId"`
-	Number  uint64 `json:"number"`
-	Root    [32]byte `json:"root"`
+	ChainID *big.Int    `json:"chainId"`
+	Number  *big.Int    `json:"number"`
+	Root    common.Hash `json:"root"`
 }
 
 // RequestBody 结构体表示请求参数
@@ -43,8 +45,8 @@ type RequestBody struct {
 
 // RegisterRequest 结构体表示 registerEICN 接口的请求参数
 type RegisterRequest struct {
-	URL     string `json:"url"`
-	ChainID int    `json:"chainId"`
+	URL     string   `json:"url"`
+	ChainID *big.Int `json:"chainId"`
 }
 
 // ResponseBody 结构体表示返回数据
