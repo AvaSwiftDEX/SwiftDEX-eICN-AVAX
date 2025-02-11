@@ -46,7 +46,6 @@ func (ec *EthclientExt) WaitTransactionReceipt(ctx context.Context, txhash commo
 	for {
 		txreceipt, err := ec.TransactionReceipt(ctx, txhash)
 		if txreceipt != nil {
-			fmt.Println("Transaction receipt received, height:", txreceipt.BlockNumber.Uint64(), "status:", txreceipt.Status)
 			return txreceipt, nil
 		}
 		if err != nil {
