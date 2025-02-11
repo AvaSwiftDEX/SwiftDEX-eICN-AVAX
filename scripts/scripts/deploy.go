@@ -19,7 +19,7 @@ import (
 )
 
 func Deploy(ctx context.Context, config *config.Config) (common.Address, error) {
-	privateKey, err := crypto.HexToECDSA(config.Chain.KeyHex)
+	privateKey, err := config.ReadPrivateKey()
 	if err != nil {
 		return common.Address{}, err
 	}
