@@ -3,6 +3,7 @@ package watcher
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/big"
@@ -20,8 +21,9 @@ type SyncHeaderData struct {
 }
 
 type CrossReceiveData struct {
-	Data1 []byte
-	Data2 []byte
+	chainId *big.Int
+	Data1   []byte
+	Data2   []byte
 }
 
 type Watcher struct {
@@ -43,7 +45,7 @@ func NewWatcher(
 	wsUrl string,
 	address common.Address,
 	chainId *big.Int,
-	transmitterClient *client.ITransmitterClient,
+	transmitter client.ITransmitterClient,
 ) (*Watcher, error) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -54,7 +56,7 @@ func NewWatcher(
 		wsUrl:             wsUrl,
 		address:           address,
 		chainId:           chainId,
-		transmitterClient: transmitterClient,
+		transmitterClient: &transmitter,
 		httpClient:        nil,
 		wsClient:          nil,
 		headerCh:          make(chan *SyncHeaderData, 1024),
@@ -77,7 +79,14 @@ func NewWatcher(
 	return wc, nil
 }
 
-func (wc *Watcher) MonitorBlock(ctx context.Context) {
+func (wc *Watcher) Run() {
+	go wc.MonitorBlock()
+	go wc.SendHeader()
+	go wc.MonitorEvent()
+	go wc.CrossReceive()
+}
+
+func (wc *Watcher) MonitorBlock() {
 	if wc.wsClient == nil {
 		panic("ws client is nil")
 	}
@@ -92,7 +101,7 @@ func (wc *Watcher) MonitorBlock(ctx context.Context) {
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-wc.ctx.Done():
 			return
 		case err := <-sub.Err():
 			log.Fatal(err)
@@ -118,10 +127,10 @@ func (wc *Watcher) MonitorBlock(ctx context.Context) {
 	}
 }
 
-func (wc *Watcher) SendHeader(ctx context.Context) {
+func (wc *Watcher) SendHeader() {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-wc.ctx.Done():
 			return
 		case header := <-wc.headerCh:
 			// 处理接收到的 header
@@ -136,7 +145,7 @@ func (wc *Watcher) SendHeader(ctx context.Context) {
 	}
 }
 
-func (wc *Watcher) MonitorEvent(ctx context.Context) {
+func (wc *Watcher) MonitorEvent() {
 	if wc.httpClient == nil {
 		panic("http client is nil")
 	}
@@ -155,7 +164,7 @@ func (wc *Watcher) MonitorEvent(ctx context.Context) {
 	}
 	for {
 		select {
-		case <-ctx.Done():
+		case <-wc.ctx.Done():
 			return
 		case err := <-sub.Err():
 			panic(err)
@@ -163,18 +172,44 @@ func (wc *Watcher) MonitorEvent(ctx context.Context) {
 			fmt.Println(">>>>>>>>>>>>>>>>>>>> find new log <<<<<<<<<<<<<<<<<<<<")
 			fmt.Println("cmHash: ", hex.EncodeToString(vLog.CmHash[:]))
 			fmt.Println("status: ", vLog.Status)
+			cm, err := instance.GetCMByHash(nil, vLog.CmHash)
+			if err != nil {
+				log.Fatal("get cm by hash, while error: ", err)
+				continue
+			}
+			cmBytes, err := json.Marshal(cm)
+			if err != nil {
+				log.Fatal("marshal cm, while error: ", err)
+				continue
+			}
+			proof, err := wc.GetProof(instance, &cm)
+			if err != nil {
+				log.Fatal("get proof, while error: ", err)
+				continue
+			}
+			wc.crossReceiveCh <- &CrossReceiveData{
+				chainId: cm.TargetChainId,
+				Data1:   cmBytes,
+				Data2:   proof,
+			}
 		}
 	}
 }
 
-func (wc *Watcher) CrossReceive(ctx context.Context) {
+func (wc *Watcher) GetProof(instance *SR2PC.SR2PC, cm *SR2PC.SR2PCCrossMessage) ([]byte, error) {
+	// TODO: get proof from instance
+	proof := []byte(fmt.Sprintf("root of block height: %d\n", cm.SourceHeight))
+	return proof, nil
+}
+
+func (wc *Watcher) CrossReceive() {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-wc.ctx.Done():
 			return
 		case data := <-wc.crossReceiveCh:
 			fmt.Println("crossReceive: ", data)
-			err := (*wc.transmitterClient).CrossReceive(data.Data1, data.Data2)
+			err := (*wc.transmitterClient).CrossReceive(data.chainId, data.Data1, data.Data2)
 			if err != nil {
 				log.Fatal("send crossReceive to transmitter client, while error: ", err)
 			}

@@ -22,13 +22,13 @@ func (m *MockTransmitterClient) SyncHeader(chainId *big.Int, number *big.Int, ro
 	return args.Error(0)
 }
 
-func (m *MockTransmitterClient) CrossReceive(data1 []byte, data2 []byte) error {
-	args := m.Called(data1, data2)
+func (m *MockTransmitterClient) CrossReceive(chainId *big.Int, data1 []byte, data2 []byte) error {
+	args := m.Called(chainId, data1, data2)
 	return args.Error(0)
 }
 
-func (m *MockTransmitterClient) RegisterEICN(url string, chainID int) error {
-	args := m.Called(url, chainID)
+func (m *MockTransmitterClient) RegisterEICN(url string, chainID *big.Int, key string) error {
+	args := m.Called(url, chainID, key)
 	return args.Error(0)
 }
 
@@ -44,7 +44,7 @@ func TestNewWatcher(t *testing.T) {
 	mockClient := new(MockTransmitterClient)
 	var transmitterClient client.ITransmitterClient = mockClient
 	// 测试创建 Watcher
-	watcher, err := NewWatcher(ctx, httpUrl, wsUrl, address, chainId, &transmitterClient)
+	watcher, err := NewWatcher(ctx, httpUrl, wsUrl, address, chainId, transmitterClient)
 
 	// 验证结果
 	assert.NoError(t, err)
@@ -62,13 +62,13 @@ func TestWatcher_SendHeader(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	mockClient := new(MockTransmitterClient)
 	var transmitterClient client.ITransmitterClient = mockClient
-	watcher, _ := NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), &transmitterClient)
+	watcher, _ := NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), transmitterClient)
 
 	// 设置 mock 期望
 	mockClient.On("SyncHeader", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	// 启动 SendHeader
-	go watcher.SendHeader(ctx)
+	go watcher.SendHeader()
 
 	// 发送测试数据
 	testHeader := &SyncHeaderData{
@@ -92,13 +92,13 @@ func TestWatcher_CrossReceive(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	mockClient := new(MockTransmitterClient)
 	var transmitterClient client.ITransmitterClient = mockClient
-	watcher, _ := NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), &transmitterClient)
+	watcher, _ := NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), transmitterClient)
 
 	// 设置 mock 期望
-	mockClient.On("CrossReceive", mock.Anything, mock.Anything).Return(nil)
+	mockClient.On("CrossReceive", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	// 启动 CrossReceive
-	go watcher.CrossReceive(ctx)
+	go watcher.CrossReceive()
 
 	// 发送测试数据
 	testData := &CrossReceiveData{
@@ -111,7 +111,7 @@ func TestWatcher_CrossReceive(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// 验证 mock 是否被调用
-	mockClient.AssertCalled(t, "CrossReceive", mock.Anything, mock.Anything)
+	mockClient.AssertCalled(t, "CrossReceive", mock.Anything, mock.Anything, mock.Anything)
 
 	// 清理
 	cancel()
@@ -122,17 +122,17 @@ func TestWatcher_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	mockClient := new(MockTransmitterClient)
 	var transmitterClient client.ITransmitterClient = mockClient
-	watcher, _ := NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), &transmitterClient)
+	watcher, _ := NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), transmitterClient)
 
 	// 启动所有监听器
 	done := make(chan bool)
 	go func() {
-		watcher.SendHeader(ctx)
+		watcher.SendHeader()
 		done <- true
 	}()
 
 	go func() {
-		watcher.CrossReceive(ctx)
+		watcher.CrossReceive()
 		done <- true
 	}()
 
