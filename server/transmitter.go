@@ -14,18 +14,20 @@ import (
 
 // Transmitter 结构体定义 HTTP 服务器
 type Transmitter struct {
-	port        string
-	storage     map[string]*big.Int
+	host        string
+	port        uint16
+	storage     map[*big.Int]string
 	mutex       sync.Mutex
 	wg          *sync.WaitGroup
 	contractSDK *sdk.ContractSDK
 }
 
 // NewTransmitter 创建一个新的 Transmitter 实例
-func NewTransmitter(port string, wg *sync.WaitGroup, contractSDK *sdk.ContractSDK) *Transmitter {
+func NewTransmitter(host string, port uint16, wg *sync.WaitGroup, contractSDK *sdk.ContractSDK, storage map[*big.Int]string) *Transmitter {
 	return &Transmitter{
+		host:        host,
 		port:        port,
-		storage:     make(map[string]*big.Int),
+		storage:     storage,
 		wg:          wg,
 		contractSDK: contractSDK,
 	}
@@ -148,7 +150,7 @@ func (t *Transmitter) RegisterEICN(w http.ResponseWriter, r *http.Request) {
 	// 存储数据
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
-	t.storage[req.URL] = req.ChainID
+	t.storage[req.ChainID] = req.URL
 
 	// 返回成功响应
 	response := ResponseBody{Success: true}
@@ -162,9 +164,13 @@ func (t *Transmitter) RegisterEICN(w http.ResponseWriter, r *http.Request) {
 func (t *Transmitter) StartServer() {
 	defer t.wg.Done()
 	http.HandleFunc("/CrossReceive", t.CrossReceive)
+	http.HandleFunc("/SyncHeader", t.SyncHeader)
 	http.HandleFunc("/registerEICN", t.RegisterEICN)
-	fmt.Printf("Server is running on port %s...\n", t.port)
-	if err := http.ListenAndServe(":"+t.port, nil); err != nil {
+	fmt.Printf("Server is running on port %d...\n", t.port)
+	if err := http.ListenAndServe(
+		fmt.Sprintf("%s:%d", t.host, t.port),
+		nil,
+	); err != nil {
 		fmt.Printf("Failed to start server: %v\n", err)
 	}
 }

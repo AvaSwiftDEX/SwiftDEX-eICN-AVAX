@@ -27,13 +27,14 @@ func setupTestSDK(t *testing.T) *sdk.ContractSDK {
 	chainId := big.NewInt(1)                                // 测试用chainId
 	address := "0x742d35Cc6634C0532925a3b844Bc454e4438f44e" // 测试用合约地址
 
-	return sdk.NewContractSDK(ctx, url, chainId, address, privateKey)
+	return sdk.NewContractSDK(ctx, url, chainId, common.HexToAddress(address), privateKey)
 }
 
 func TestCrossReceive(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	contractSDK := setupTestSDK(t)
-	transmitter := NewTransmitter("8080", wg, contractSDK)
+	storage := make(map[*big.Int]string)
+	transmitter := NewTransmitter("127.0.0.1", 8080, wg, contractSDK, storage)
 
 	requestBody, _ := json.Marshal(RequestBody{
 		Data1: []byte("test1"),
@@ -55,7 +56,8 @@ func TestCrossReceive(t *testing.T) {
 func TestRegisterEICN(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	contractSDK := setupTestSDK(t)
-	transmitter := NewTransmitter("8080", wg, contractSDK)
+	storage := make(map[*big.Int]string)
+	transmitter := NewTransmitter("127.0.0.1", 8080, wg, contractSDK, storage)
 
 	requestBody, _ := json.Marshal(RegisterRequest{
 		URL:     "http://example.com",
@@ -77,7 +79,8 @@ func TestRegisterEICN(t *testing.T) {
 func TestTransmitterCrossReceiveIntegration(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	contractSDK := setupTestSDK(t)
-	transmitter := NewTransmitter("8080", wg, contractSDK)
+	storage := make(map[*big.Int]string)
+	transmitter := NewTransmitter("127.0.0.1", 8080, wg, contractSDK, storage)
 
 	go contractSDK.Run()
 
@@ -103,7 +106,8 @@ func TestTransmitterCrossReceiveIntegration(t *testing.T) {
 func TestSyncHeader(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	contractSDK := setupTestSDK(t)
-	transmitter := NewTransmitter("8080", wg, contractSDK)
+	storage := make(map[*big.Int]string)
+	transmitter := NewTransmitter("127.0.0.1", 8080, wg, contractSDK, storage)
 
 	requestBody, _ := json.Marshal(RequestHeader{
 		ChainID: big.NewInt(1),
@@ -135,7 +139,8 @@ func TestSyncHeader(t *testing.T) {
 func TestInvalidMethod(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	contractSDK := setupTestSDK(t)
-	transmitter := NewTransmitter("8080", wg, contractSDK)
+	storage := make(map[*big.Int]string)
+	transmitter := NewTransmitter("127.0.0.1", 8080, wg, contractSDK, storage)
 
 	// 测试 SyncHeader 的 GET 请求
 	r := httptest.NewRequest(http.MethodGet, "/SyncHeader", nil)
@@ -168,7 +173,8 @@ func TestInvalidMethod(t *testing.T) {
 func TestInvalidJSON(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	contractSDK := setupTestSDK(t)
-	transmitter := NewTransmitter("8080", wg, contractSDK)
+	storage := make(map[*big.Int]string)
+	transmitter := NewTransmitter("127.0.0.1", 8080, wg, contractSDK, storage)
 
 	invalidJSON := []byte(`{"invalid json`)
 
