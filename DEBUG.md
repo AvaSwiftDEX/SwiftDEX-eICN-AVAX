@@ -9,3 +9,6 @@ sudo apt update
 sudo apt install build-essential
 gcc --version
 ```
+7. map的key不能用*big.Int, 需要用string, 因为\*big.Int的值虽然相同, 但是地址不同, 所以不能作为key
+8. log.Fatal 会直接退出程序, 所以不能随便使用
+9. *big.Int 比较大小时, 不能直接用==, 需要用Cmp方法
