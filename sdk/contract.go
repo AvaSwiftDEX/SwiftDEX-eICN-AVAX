@@ -61,7 +61,7 @@ type ContractSDK struct {
 }
 
 // NewContractSDK 创建一个新的 ContractSDK 实例
-func NewContractSDK(ctx context.Context, url string, chainId *big.Int, address string, privateKey *ecdsa.PrivateKey) *ContractSDK {
+func NewContractSDK(ctx context.Context, url string, chainId *big.Int, address common.Address, privateKey *ecdsa.PrivateKey) *ContractSDK {
 	httpclient, err := ethclientext.Dial(url)
 	if err != nil {
 		panic(err)
@@ -82,7 +82,7 @@ func NewContractSDK(ctx context.Context, url string, chainId *big.Int, address s
 	return &ContractSDK{
 		ctx:           ctx,
 		URL:           url,
-		Address:       common.HexToAddress(address),
+		Address:       address,
 		ChainId:       chainId,
 		ChainNativeId: chainNativeID,
 		PrivateKey:    privateKey,
@@ -99,13 +99,19 @@ func NewContractSDK(ctx context.Context, url string, chainId *big.Int, address s
 
 // Run 持续监听通道，同时监听停止信号
 func (sdk *ContractSDK) Run() {
+	go sdk.ListenDataFromServer()
+	go sdk.WaitCMHashData()
+	go sdk.WaitHDRHashData()
+}
+
+func (sdk *ContractSDK) ListenDataFromServer() {
 	for {
 		select {
 		case data := <-sdk.Serv2SDK_CM:
 			sdk.CrossReceive(data)
 		case data := <-sdk.Serv2SDK_HDR:
 			sdk.SyncHeader(data)
-		case <-sdk.Stop:
+		case <-sdk.ctx.Done():
 			fmt.Println("Stopping ContractSDK...")
 			return
 		}
