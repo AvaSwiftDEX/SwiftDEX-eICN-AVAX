@@ -9,27 +9,31 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/kimroniny/SuperRunner-eICN-eth2/logger"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/sdk"
+	"github.com/sirupsen/logrus"
 )
 
 // Transmitter 结构体定义 HTTP 服务器
 type Transmitter struct {
 	host        string
 	port        uint16
-	storage     map[*big.Int]string
+	storage     map[string]string
 	mutex       sync.Mutex
 	wg          *sync.WaitGroup
 	contractSDK *sdk.ContractSDK
+	log         *logrus.Entry
 }
 
 // NewTransmitter 创建一个新的 Transmitter 实例
-func NewTransmitter(host string, port uint16, wg *sync.WaitGroup, contractSDK *sdk.ContractSDK, storage map[*big.Int]string) *Transmitter {
+func NewTransmitter(host string, port uint16, wg *sync.WaitGroup, contractSDK *sdk.ContractSDK, storage map[string]string) *Transmitter {
 	return &Transmitter{
 		host:        host,
 		port:        port,
 		storage:     storage,
 		wg:          wg,
 		contractSDK: contractSDK,
+		log:         logger.NewComponent("Transmitter"),
 	}
 }
 
@@ -150,7 +154,8 @@ func (t *Transmitter) RegisterEICN(w http.ResponseWriter, r *http.Request) {
 	// 存储数据
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
-	t.storage[req.ChainID] = req.URL
+	t.storage[req.ChainID.String()] = req.URL
+	t.log.Info(fmt.Sprintf("RegisterEICN: %d, %s", req.ChainID, req.URL))
 
 	// 返回成功响应
 	response := ResponseBody{Success: true}
@@ -166,11 +171,11 @@ func (t *Transmitter) StartServer() {
 	http.HandleFunc("/CrossReceive", t.CrossReceive)
 	http.HandleFunc("/SyncHeader", t.SyncHeader)
 	http.HandleFunc("/registerEICN", t.RegisterEICN)
-	fmt.Printf("Server is running on port %d...\n", t.port)
+	t.log.Info(fmt.Sprintf("Server is running on port %d...", t.port))
 	if err := http.ListenAndServe(
 		fmt.Sprintf("%s:%d", t.host, t.port),
 		nil,
 	); err != nil {
-		fmt.Printf("Failed to start server: %v\n", err)
+		t.log.Fatal(fmt.Sprintf("Failed to start server: %v", err))
 	}
 }
