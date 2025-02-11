@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"gopkg.in/yaml.v3"
 )
@@ -15,19 +16,19 @@ import (
 // Config 定义配置结构
 type Config struct {
 	HTTP struct {
-		Port    int    `yaml:"port"`
+		Port    uint16 `yaml:"port"`
 		Host    string `yaml:"host"`
 		BaseURL string `yaml:"base_url"`
 	} `yaml:"http"`
 
 	Chain struct {
-		ID      *big.Int `yaml:"id"`
-		HTTPURL string   `yaml:"http_url"`
-		WSURL   string   `yaml:"ws_url"`
-		KeyFile string   `yaml:"key_file"`
-		KeyHex  string   `yaml:"key_hex"`
-		UseFile bool     `yaml:"use_file"`
-		Address string   `yaml:"address,omitempty"`
+		ID      *big.Int       `yaml:"id"`
+		HTTPURL string         `yaml:"http_url"`
+		WSURL   string         `yaml:"ws_url"`
+		KeyFile string         `yaml:"key_file"`
+		KeyHex  string         `yaml:"key_hex"`
+		UseFile bool           `yaml:"use_file"`
+		Address common.Address `yaml:"address,omitempty"`
 	} `yaml:"chain"`
 }
 
@@ -101,7 +102,7 @@ func createDefaultConfig(filename string) (*Config, error) {
 	config.Chain.KeyFile = "node/keystore/UTC--2025-02-08T06-12-23.376721660Z--a8a410a56f93e14fb5a71f5968958851915b6909"
 	config.Chain.KeyHex = "c45ba5d6de0e502aefd23c98b40a2c9018e2e0286dde4fdb542ded619cefc8bd"
 	config.Chain.UseFile = true
-	config.Chain.Address = ""
+	config.Chain.Address = common.HexToAddress("0x0000000000000000000000000000000000000000")
 
 	// 保存默认配置到文件
 	if err := config.SaveConfig(filename); err != nil {
