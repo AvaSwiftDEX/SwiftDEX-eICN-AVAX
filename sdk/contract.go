@@ -5,7 +5,6 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"log"
 	"math/big"
 	"sync"
@@ -17,6 +16,8 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/SR2PC"
 	ethclientext "github.com/kimroniny/SuperRunner-eICN-eth2/ethclientExt"
+	"github.com/kimroniny/SuperRunner-eICN-eth2/logger"
+	"github.com/sirupsen/logrus"
 )
 
 // CrossData 结构体表示通道传输的数据
@@ -58,6 +59,7 @@ type ContractSDK struct {
 	WaitHDRHashCh chan *HDRHashData // 容量为1024的通道
 	Stop          chan struct{}     // 停止信号通道
 	mutex         sync.Mutex
+	log           *logrus.Entry
 }
 
 // NewContractSDK 创建一个新的 ContractSDK 实例
@@ -79,6 +81,7 @@ func NewContractSDK(ctx context.Context, url string, chainId *big.Int, address c
 		log.Fatal(err)
 		return nil
 	}
+
 	return &ContractSDK{
 		ctx:           ctx,
 		URL:           url,
@@ -94,6 +97,7 @@ func NewContractSDK(ctx context.Context, url string, chainId *big.Int, address c
 		WaitHDRHashCh: make(chan *HDRHashData, 1024),
 		Stop:          make(chan struct{}),
 		mutex:         sync.Mutex{},
+		log:           logger.NewComponent("ContractSDK"),
 	}
 }
 
@@ -112,7 +116,7 @@ func (sdk *ContractSDK) ListenDataFromServer() {
 		case data := <-sdk.Serv2SDK_HDR:
 			sdk.SyncHeader(data)
 		case <-sdk.ctx.Done():
-			fmt.Println("Stopping ContractSDK...")
+			sdk.log.Info("Stopping ContractSDK...")
 			return
 		}
 	}
@@ -132,34 +136,46 @@ func (sdk *ContractSDK) CrossReceive(data *CrossData) {
 	var cm SR2PC.SR2PCCrossMessage
 	err := json.Unmarshal(data.Cm, &cm)
 	if err != nil {
-		log.Fatal(err)
+		sdk.log.WithFields(logrus.Fields{
+			"method": "CrossReceive",
+		}).Fatal(err)
 		return
 	}
-	if cm.TargetChainId != sdk.ChainId {
-		log.Fatal("chain id not match")
+	if cm.TargetChainId.Cmp(sdk.ChainId) != 0 {
+		sdk.log.WithFields(logrus.Fields{
+			"method": "CrossReceive",
+		}).Fatal("chain id not match")
 		return
 	}
 
 	var proof []byte
 	err = json.Unmarshal(data.Proof, &proof)
 	if err != nil {
-		log.Fatal(err)
+		sdk.log.WithFields(logrus.Fields{
+			"method": "CrossReceive",
+		}).Fatal(err)
 		return
 	}
-	fmt.Println("Received CM and proof data:", cm, proof)
+	sdk.log.WithFields(logrus.Fields{
+		"method": "CrossReceive",
+	}).Info("Received CM and proof data: ", cm, proof)
 
 	// get nonce
 	fromAddress := crypto.PubkeyToAddress(*sdk.PublicKey)
 	nonce, err := sdk.HttpClient.PendingNonceAt(sdk.ctx, fromAddress)
 	if err != nil {
-		log.Fatal(err)
+		sdk.log.WithFields(logrus.Fields{
+			"method": "CrossReceive",
+		}).Fatal(err)
 		return
 	}
 
 	// get auth
 	auth, err := bind.NewKeyedTransactorWithChainID(sdk.PrivateKey, sdk.ChainNativeId)
 	if err != nil {
-		log.Fatal(err)
+		sdk.log.WithFields(logrus.Fields{
+			"method": "CrossReceive",
+		}).Fatal(err)
 		return
 	}
 
@@ -167,24 +183,29 @@ func (sdk *ContractSDK) CrossReceive(data *CrossData) {
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = big.NewInt(0)
 	auth.GasLimit = uint64(4000000)
-	fmt.Println("gas tip: ", auth.GasLimit)
 	gasPrice := 100
 	auth.GasPrice = big.NewInt(int64(gasPrice))
 
 	// get instance
 	instance, err := SR2PC.NewSR2PC(sdk.Address, sdk.HttpClient)
 	if err != nil {
-		log.Fatal(err)
+		sdk.log.WithFields(logrus.Fields{
+			"method": "CrossReceive",
+		}).Fatal(err)
 		return
 	}
 
 	// send transaction
 	tx, err := instance.CrossReceive(auth, cm, proof)
 	if err != nil {
-		log.Fatal(err)
+		sdk.log.WithFields(logrus.Fields{
+			"method": "CrossReceive",
+		}).Fatal(err)
 		return
 	}
-	fmt.Println("tx: ", tx.Hash().Hex())
+	sdk.log.WithFields(logrus.Fields{
+		"method": "CrossReceive",
+	}).Info("txHash: ", tx.Hash().Hex())
 
 	// send hash to channel
 	hash := tx.Hash()
@@ -200,11 +221,15 @@ func (sdk *ContractSDK) WaitCMHashData() {
 			10000*time.Millisecond,
 		)
 		if err != nil {
-			log.Fatal(err)
+			sdk.log.WithFields(logrus.Fields{
+				"method": "WaitCMHashData",
+			}).Fatal(err)
 			return
 		}
 		if receipt.Status == types.ReceiptStatusFailed {
-			log.Fatal("CrossReceive transaction failed: ", cmHash.Hash.Hex())
+			sdk.log.WithFields(logrus.Fields{
+				"method": "WaitCMHashData",
+			}).Fatal("CrossReceive transaction failed: ", cmHash.Hash.Hex())
 			return
 		}
 	case <-sdk.ctx.Done():
@@ -220,20 +245,26 @@ func (sdk *ContractSDK) SyncHeader(data *HeaderData) {
 	sdk.mutex.Lock()
 	defer sdk.mutex.Unlock()
 
-	fmt.Printf("Received Header data: %s\n", hex.EncodeToString(data.root[:]))
+	sdk.log.WithFields(logrus.Fields{
+		"method": "SyncHeader",
+	}).Info("Received Header data: ", hex.EncodeToString(data.root[:]))
 
 	// get nonce
 	fromAddress := crypto.PubkeyToAddress(*sdk.PublicKey)
 	nonce, err := sdk.HttpClient.PendingNonceAt(sdk.ctx, fromAddress)
 	if err != nil {
-		log.Fatal(err)
+		sdk.log.WithFields(logrus.Fields{
+			"method": "SyncHeader",
+		}).Fatal(err)
 		return
 	}
 
 	// get auth
 	auth, err := bind.NewKeyedTransactorWithChainID(sdk.PrivateKey, sdk.ChainNativeId)
 	if err != nil {
-		log.Fatal(err)
+		sdk.log.WithFields(logrus.Fields{
+			"method": "SyncHeader",
+		}).Fatal(err)
 		return
 	}
 
@@ -241,14 +272,15 @@ func (sdk *ContractSDK) SyncHeader(data *HeaderData) {
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = big.NewInt(0)
 	auth.GasLimit = uint64(4000000)
-	fmt.Println("gas tip: ", auth.GasLimit)
 	gasPrice := 100
 	auth.GasPrice = big.NewInt(int64(gasPrice))
 
 	// get instance
 	instance, err := SR2PC.NewSR2PC(sdk.Address, sdk.HttpClient)
 	if err != nil {
-		log.Fatal(err)
+		sdk.log.WithFields(logrus.Fields{
+			"method": "SyncHeader",
+		}).Fatal(err)
 		return
 	}
 
@@ -259,10 +291,14 @@ func (sdk *ContractSDK) SyncHeader(data *HeaderData) {
 	}
 	tx, err := instance.SyncHeader(auth, data.chainId, header)
 	if err != nil {
-		log.Fatal(err)
+		sdk.log.WithFields(logrus.Fields{
+			"method": "SyncHeader",
+		}).Fatal(err)
 		return
 	}
-	fmt.Println("tx: ", tx.Hash().Hex())
+	sdk.log.WithFields(logrus.Fields{
+		"method": "SyncHeader",
+	}).Info("txHash: ", tx.Hash().Hex())
 
 	// send hash to channel
 	hash := tx.Hash()
@@ -278,11 +314,15 @@ func (sdk *ContractSDK) WaitHDRHashData() {
 			10000*time.Millisecond,
 		)
 		if err != nil {
-			log.Fatal(err)
+			sdk.log.WithFields(logrus.Fields{
+				"method": "WaitHDRHashData",
+			}).Fatal(err)
 			return
 		}
 		if receipt.Status == types.ReceiptStatusFailed {
-			log.Fatal("SyncHeader transaction failed: ", hdrHash.Hash.Hex())
+			sdk.log.WithFields(logrus.Fields{
+				"method": "WaitHDRHashData",
+			}).Fatal("SyncHeader transaction failed: ", hdrHash.Hash.Hex())
 			return
 		}
 	case <-sdk.ctx.Done():
