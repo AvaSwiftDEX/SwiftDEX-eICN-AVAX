@@ -158,7 +158,14 @@ func (sdk *ContractSDK) CrossReceive(data *CrossData) {
 	}
 	sdk.log.WithFields(logrus.Fields{
 		"method": "CrossReceive",
-	}).Info("Received CM and proof data: ", cm, proof)
+	}).Info(
+		"Received CM and proof data, source chainID: ", cm.SourceChainId, 
+		", target chainID: ", cm.TargetChainId, 
+		", phase: ", cm.Phase, 
+		", nonce: ", cm.Nonce, 
+		", source height: ", cm.SourceHeight, 
+		", cm input height: ", cm.CmInputHeight,
+	)
 
 	// get nonce
 	fromAddress := crypto.PubkeyToAddress(*sdk.PublicKey)
