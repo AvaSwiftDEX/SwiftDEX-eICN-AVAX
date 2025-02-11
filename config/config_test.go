@@ -118,7 +118,7 @@ func TestConfigSaveError(t *testing.T) {
 
 func TestReadPrivateKey(t *testing.T) {
 	// 测试不存在的密钥文件
-	_, err := readPrivateKey("nonexistent_key.json")
+	_, err := readPrivateKeyFromFile("nonexistent_key.json")
 	assert.Error(t, err)
 
 	// 测试无效的密钥文件内容
@@ -127,6 +127,6 @@ func TestReadPrivateKey(t *testing.T) {
 	err = os.WriteFile(invalidKeyPath, []byte("invalid key content"), 0644)
 	assert.NoError(t, err)
 
-	_, err = readPrivateKey(invalidKeyPath)
+	_, err = readPrivateKeyFromFile(invalidKeyPath)
 	assert.Error(t, err)
 } 

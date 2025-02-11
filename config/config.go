@@ -2,7 +2,6 @@ package config
 
 import (
 	"crypto/ecdsa"
-	"encoding/hex"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -32,7 +31,7 @@ type Config struct {
 	} `yaml:"chain"`
 }
 
-func readPrivateKey(keyFile string) (*ecdsa.PrivateKey, error) {
+func readPrivateKeyFromFile(keyFile string) (*ecdsa.PrivateKey, error) {
 	key, err := os.ReadFile(keyFile)
 	if err != nil {
 		return nil, err
@@ -42,6 +41,27 @@ func readPrivateKey(keyFile string) (*ecdsa.PrivateKey, error) {
 		return nil, err
 	}
 	return account.PrivateKey, nil
+}
+
+func readPrivateKeyFromHex(hex string) (*ecdsa.PrivateKey, error) {
+	privateKey, err := crypto.HexToECDSA(hex)
+	if err != nil {
+		return nil, err
+	}
+	return privateKey, nil
+}
+
+func (c *Config) ReadPrivateKey() (*ecdsa.PrivateKey, error) {
+	// update privateKeyHex if useFile is true
+	if c.Chain.UseFile {
+		privateKey, err := readPrivateKeyFromFile(c.Chain.KeyFile)
+		if err != nil {
+			return nil, err
+		}
+		return privateKey, nil
+	} else {
+		return readPrivateKeyFromHex(c.Chain.KeyHex)
+	}
 }
 
 // LoadConfig 从文件加载配置
@@ -54,25 +74,12 @@ func LoadConfig(filename string) (*Config, error) {
 	// 读取配置文件
 	data, err := os.ReadFile(filename)
 	if err != nil {
-		if os.IsNotExist(err) {
-			// 如果文件不存在，创建默认配置
-			return createDefaultConfig(filename)
-		}
 		return nil, err
 	}
 
 	config := &Config{}
 	if err := yaml.Unmarshal(data, config); err != nil {
 		return nil, err
-	}
-
-	// update privateKeyHex if useFile is true
-	if config.Chain.UseFile {
-		privateKey, err := readPrivateKey(config.Chain.KeyFile)
-		if err != nil {
-			return nil, err
-		}
-		config.Chain.KeyHex = hex.EncodeToString(crypto.FromECDSA(privateKey))[2:]
 	}
 	return config, nil
 }
