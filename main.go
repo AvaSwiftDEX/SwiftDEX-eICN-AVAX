@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"math/big"
 	"sync"
 
 	"github.com/kimroniny/SuperRunner-eICN-eth2/client"
@@ -19,7 +18,7 @@ func main() {
 	// 初始化日志
 	logger.InitLogger()
 	log := logger.GetLogger()
-	log.SetReportCaller(true)
+	// log.SetReportCaller(true)
 
 	// 定义命令行参数
 	configPath := flag.String("config", "config.yaml", "path to config file")
@@ -57,7 +56,8 @@ func main() {
 	go contractSDK.Run()
 
 	// create storage
-	storage := make(map[*big.Int]string)
+	// use string as key, *big.Int with the same value is different key
+	storage := make(map[string]string)
 
 	// run server
 	transmitterServer := server.NewTransmitter(cfg.HTTP.Host, cfg.HTTP.Port, &wg, contractSDK, storage)
