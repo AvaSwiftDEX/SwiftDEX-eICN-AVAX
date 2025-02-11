@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -13,6 +12,8 @@ import (
 	"github.com/kimroniny/SuperRunner-eICN-eth2/SR2PC"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/client"
 	ethclientext "github.com/kimroniny/SuperRunner-eICN-eth2/ethclientExt"
+	"github.com/kimroniny/SuperRunner-eICN-eth2/logger"
+	"github.com/sirupsen/logrus"
 )
 
 type SyncHeaderData struct {
@@ -37,6 +38,7 @@ type Watcher struct {
 	transmitterClient *client.ITransmitterClient
 	headerCh          chan *SyncHeaderData
 	crossReceiveCh    chan *CrossReceiveData
+	log               *logrus.Entry
 }
 
 func NewWatcher(
@@ -61,6 +63,7 @@ func NewWatcher(
 		wsClient:          nil,
 		headerCh:          make(chan *SyncHeaderData, 1024),
 		crossReceiveCh:    make(chan *CrossReceiveData, 1024),
+		log:               logger.NewComponent("Watcher"),
 	}
 	if httpUrl != "" {
 		client, err := ethclientext.Dial(httpUrl)
@@ -88,35 +91,32 @@ func (wc *Watcher) Run() {
 
 func (wc *Watcher) MonitorBlock() {
 	if wc.wsClient == nil {
-		panic("ws client is nil")
+		wc.log.Fatal("ws client is nil")
 	}
 	if wc.httpClient == nil {
-		panic("http client is nil")
+		wc.log.Fatal("http client is nil")
 	}
+
+	wc.log.Info("start to monitor block")
+
 	headers := make(chan *types.Header)
 	sub, err := wc.wsClient.SubscribeNewHead(context.Background(), headers)
 	if err != nil {
-		log.Fatal(err)
+		wc.log.Fatal("subscribeHeader, the sub error: ", err)
 	}
-
 	for {
 		select {
 		case <-wc.ctx.Done():
 			return
 		case err := <-sub.Err():
-			log.Fatal(err)
+			wc.log.Fatal("subscribeHeader, the sub error: ", err)
 		case header := <-headers:
-			fmt.Println(header.Number.Uint64(), header.Hash().Hex()) // 0xbc10defa8dda384c96a17640d84de5578804945d347072e091b4e5f390ddea7f
+			wc.log.Info(fmt.Sprintf("find a new header: block height: %d, block hash: %s", header.Number.Uint64(), header.Hash().Hex()))
 
 			header, err := wc.httpClient.HeaderByNumber(wc.ctx, header.Number)
 			if err != nil {
-				log.Fatal("get block by hash, while error: ", err)
+				wc.log.Fatal("get block by hash, while error: ", err)
 			}
-
-			fmt.Println(header.Hash().Hex())    // 0xbc10defa8dda384c96a17640d84de5578804945d347072e091b4e5f390ddea7f
-			fmt.Println(header.Number.Uint64()) // 3477413
-			fmt.Println(header.Time)            // 1529525947
-			fmt.Println(header.Nonce.Uint64())  // 130524141876765836
 
 			// 发送 header 到 headerCh
 			wc.headerCh <- &SyncHeaderData{
@@ -134,12 +134,15 @@ func (wc *Watcher) SendHeader() {
 			return
 		case header := <-wc.headerCh:
 			// 处理接收到的 header
-			fmt.Printf("Received new header from headerCh of MonitorBlock, number: %d, hash: %s\n",
-				header.Number.Uint64(),
-				header.Root.Hex())
+			wc.log.WithFields(logrus.Fields{
+				"method":     "SendHeader",
+				"chainID":    wc.chainId,
+				"blockNum":   header.Number.Uint64(),
+				"headerRoot": header.Root.Hex(),
+			}).Info("call target server's SyncHeader")
 			err := (*wc.transmitterClient).SyncHeader(wc.chainId, header.Number, header.Root)
 			if err != nil {
-				log.Fatal("send header to transmitter client, while error: ", err)
+				wc.log.Fatal("send header to transmitter client, while error: ", err)
 			}
 		}
 	}
@@ -147,44 +150,42 @@ func (wc *Watcher) SendHeader() {
 
 func (wc *Watcher) MonitorEvent() {
 	if wc.httpClient == nil {
-		panic("http client is nil")
+		wc.log.Fatal("http client is nil")
 	}
 	if wc.wsClient == nil {
-		panic("ws client is nil")
+		wc.log.Fatal("ws client is nil")
 	}
-	fmt.Println(">>> MonitorEvent")
+	wc.log.Info("start to monitor event")
 	instance, err := SR2PC.NewSR2PC(wc.address, wc.wsClient)
 	if err != nil {
-		panic(err)
+		wc.log.Fatal("new SR2PC instance, while error: ", err)
 	}
 	logs := make(chan *SR2PC.SR2PCSendCMHash)
 	sub, err := instance.WatchSendCMHash(nil, logs)
 	if err != nil {
-		panic(err)
+		wc.log.Fatal("watchSendCMHash, while error: ", err)
 	}
 	for {
 		select {
 		case <-wc.ctx.Done():
 			return
 		case err := <-sub.Err():
-			panic(err)
+			wc.log.Fatal("subscribeSendCMHash, the sub error: ", err)
 		case vLog := <-logs:
-			fmt.Println(">>>>>>>>>>>>>>>>>>>> find new log <<<<<<<<<<<<<<<<<<<<")
-			fmt.Println("cmHash: ", hex.EncodeToString(vLog.CmHash[:]))
-			fmt.Println("status: ", vLog.Status)
+			wc.log.Info(fmt.Sprintf("find a new log, cmHash: %s, status: %d", hex.EncodeToString(vLog.CmHash[:]), vLog.Status))
 			cm, err := instance.GetCMByHash(nil, vLog.CmHash)
 			if err != nil {
-				log.Fatal("get cm by hash, while error: ", err)
+				wc.log.Fatal("get cm by hash, while error: ", err)
 				continue
 			}
 			cmBytes, err := json.Marshal(cm)
 			if err != nil {
-				log.Fatal("marshal cm, while error: ", err)
+				wc.log.Fatal("marshal cm, while error: ", err)
 				continue
 			}
 			proof, err := wc.GetProof(instance, &cm)
 			if err != nil {
-				log.Fatal("get proof, while error: ", err)
+				wc.log.Fatal("get proof, while error: ", err)
 				continue
 			}
 			wc.crossReceiveCh <- &CrossReceiveData{
@@ -208,10 +209,13 @@ func (wc *Watcher) CrossReceive() {
 		case <-wc.ctx.Done():
 			return
 		case data := <-wc.crossReceiveCh:
-			fmt.Println("crossReceive: ", data)
+			wc.log.WithFields(logrus.Fields{
+				"method":  "CrossReceive",
+				"chainID": data.chainId,
+			}).Info("call transmitter client's CrossReceive")
 			err := (*wc.transmitterClient).CrossReceive(data.chainId, data.Data1, data.Data2)
 			if err != nil {
-				log.Fatal("send crossReceive to transmitter client, while error: ", err)
+				wc.log.Fatal("send crossReceive to transmitter client, while error: ", err)
 			}
 		}
 	}

@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"math/big"
 	"net/http"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/kimroniny/SuperRunner-eICN-eth2/logger"
+	"github.com/sirupsen/logrus"
 )
 
 // ITransmitterClient 定义了 Transmitter 客户端的接口
@@ -22,6 +23,7 @@ type ITransmitterClient interface {
 // TransmitterClient 结构体用于与 Transmitter 服务器通信
 type TransmitterClient struct {
 	storage map[*big.Int]string
+	log     *logrus.Entry
 }
 
 // 确保 TransmitterClient 实现了 ITransmitterClient 接口
@@ -31,6 +33,7 @@ var _ ITransmitterClient = (*TransmitterClient)(nil)
 func NewTransmitterClient(storage map[*big.Int]string) *TransmitterClient {
 	return &TransmitterClient{
 		storage: storage,
+		log:     logger.NewComponent("TransmitterClient"),
 	}
 }
 
@@ -63,7 +66,7 @@ type RequestHeader struct {
 func (c *TransmitterClient) CrossReceive(chainId *big.Int, data1, data2 []byte) error {
 	var targetServerURL string
 	if _url, ok := c.storage[chainId]; !ok {
-		log.Fatalf("未找到链ID %d 的 URL", chainId)
+		c.log.Info(fmt.Sprintf("未找到链(#%d)的 URL", chainId))
 		return nil
 	} else {
 		targetServerURL = _url
@@ -78,6 +81,11 @@ func (c *TransmitterClient) CrossReceive(chainId *big.Int, data1, data2 []byte) 
 	if err != nil {
 		return fmt.Errorf("序列化请求数据失败: %v", err)
 	}
+
+	c.log.WithFields(logrus.Fields{
+		"chainID": chainId,
+		"url":     targetServerURL,
+	}).Info("调用 CrossReceive")
 
 	resp, err := http.Post(targetServerURL+"/CrossReceive", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -104,6 +112,10 @@ func (c *TransmitterClient) CrossReceive(chainId *big.Int, data1, data2 []byte) 
 
 // RegisterEICN 注册 URL 和 ChainID
 func (c *TransmitterClient) RegisterEICN(url string, chainID *big.Int, targetServerURL string) error {
+	c.log.WithFields(logrus.Fields{
+		"url":     url,
+		"chainID": chainID,
+	}).Info("注册 EICN")
 
 	reqBody := RegisterRequest{
 		URL:     url,
@@ -142,7 +154,9 @@ func (c *TransmitterClient) RegisterEICN(url string, chainID *big.Int, targetSer
 func (c *TransmitterClient) SyncHeader(chainID *big.Int, number *big.Int, root common.Hash) error {
 	var targetServerURL string
 	if _url, ok := c.storage[chainID]; !ok {
-		log.Fatalf("未找到链ID %d 的 URL", chainID)
+		c.log.WithFields(logrus.Fields{
+			"method": "SyncHeader",
+		}).Info("未找到链的 URL")
 		return nil
 	} else {
 		targetServerURL = _url
@@ -158,6 +172,13 @@ func (c *TransmitterClient) SyncHeader(chainID *big.Int, number *big.Int, root c
 	if err != nil {
 		return fmt.Errorf("序列化请求数据失败: %v", err)
 	}
+
+	c.log.WithFields(logrus.Fields{
+		"method":        "SyncHeader",
+		"targetChainID": chainID,
+		"blockNum":      number,
+		"headerRoot":    root.Hex(),
+	}).Info("call target server's SyncHeader")
 
 	resp, err := http.Post(targetServerURL+"/SyncHeader", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
