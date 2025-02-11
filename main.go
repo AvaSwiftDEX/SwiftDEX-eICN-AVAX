@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/client"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/config"
-	deploy "github.com/kimroniny/SuperRunner-eICN-eth2/deploy"
+	"github.com/kimroniny/SuperRunner-eICN-eth2/scripts"
 	sdk "github.com/kimroniny/SuperRunner-eICN-eth2/sdk"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/server"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/watcher"
@@ -30,7 +30,7 @@ func main() {
 		panic(err)
 	}
 
-	address, err := deploy.Deploy(ctx, cfg)
+	address, err := scripts.Deploy(ctx, cfg)
 	if err != nil {
 		panic(err)
 	}
