@@ -33,7 +33,7 @@ func setupTestSDK(t *testing.T) *sdk.ContractSDK {
 func TestCrossReceive(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	contractSDK := setupTestSDK(t)
-	storage := make(map[*big.Int]string)
+	storage := make(map[string]string)
 	transmitter := NewTransmitter("127.0.0.1", 8080, wg, contractSDK, storage)
 
 	requestBody, _ := json.Marshal(RequestBody{
@@ -56,7 +56,7 @@ func TestCrossReceive(t *testing.T) {
 func TestRegisterEICN(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	contractSDK := setupTestSDK(t)
-	storage := make(map[*big.Int]string)
+	storage := make(map[string]string)
 	transmitter := NewTransmitter("127.0.0.1", 8080, wg, contractSDK, storage)
 
 	requestBody, _ := json.Marshal(RegisterRequest{
@@ -79,7 +79,7 @@ func TestRegisterEICN(t *testing.T) {
 func TestTransmitterCrossReceiveIntegration(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	contractSDK := setupTestSDK(t)
-	storage := make(map[*big.Int]string)
+	storage := make(map[string]string)
 	transmitter := NewTransmitter("127.0.0.1", 8080, wg, contractSDK, storage)
 
 	go contractSDK.Run()
@@ -106,7 +106,7 @@ func TestTransmitterCrossReceiveIntegration(t *testing.T) {
 func TestSyncHeader(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	contractSDK := setupTestSDK(t)
-	storage := make(map[*big.Int]string)
+	storage := make(map[string]string)
 	transmitter := NewTransmitter("127.0.0.1", 8080, wg, contractSDK, storage)
 
 	requestBody, _ := json.Marshal(RequestHeader{
@@ -139,7 +139,7 @@ func TestSyncHeader(t *testing.T) {
 func TestInvalidMethod(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	contractSDK := setupTestSDK(t)
-	storage := make(map[*big.Int]string)
+	storage := make(map[string]string)
 	transmitter := NewTransmitter("127.0.0.1", 8080, wg, contractSDK, storage)
 
 	// 测试 SyncHeader 的 GET 请求
@@ -173,7 +173,7 @@ func TestInvalidMethod(t *testing.T) {
 func TestInvalidJSON(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	contractSDK := setupTestSDK(t)
-	storage := make(map[*big.Int]string)
+	storage := make(map[string]string)
 	transmitter := NewTransmitter("127.0.0.1", 8080, wg, contractSDK, storage)
 
 	invalidJSON := []byte(`{"invalid json`)
