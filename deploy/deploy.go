@@ -18,7 +18,7 @@ import (
 	ethclientext "github.com/kimroniny/SuperRunner-eICN-eth2/ethclientExt"
 )
 
-func deploy(ctx context.Context, config *config.Config) (common.Address, error) {
+func Deploy(ctx context.Context, config *config.Config) (common.Address, error) {
 	privateKey, err := crypto.HexToECDSA(config.Chain.KeyHex)
 	if err != nil {
 		return common.Address{}, err
