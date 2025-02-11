@@ -188,10 +188,15 @@ func (wc *Watcher) MonitorEvent() {
 				wc.log.Fatal("get proof, while error: ", err)
 				continue
 			}
+			proofBytes, err := json.Marshal(proof)
+			if err != nil {
+				wc.log.Fatal("marshal proof, while error: ", err)
+				continue
+			}
 			wc.crossReceiveCh <- &CrossReceiveData{
 				chainId: cm.TargetChainId,
 				Data1:   cmBytes,
-				Data2:   proof,
+				Data2:   proofBytes,
 			}
 		}
 	}
