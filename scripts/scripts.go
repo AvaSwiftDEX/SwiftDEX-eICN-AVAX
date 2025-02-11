@@ -19,6 +19,9 @@ var (
 	// cross-send 命令的标志
 	chainIDsStr string
 	value       string
+
+	// regist-eICN 命令的标志
+	targetConfigFile string
 )
 
 // parseChainIDs 解析链ID参数字符串，格式如 "1,2,3"
@@ -120,11 +123,34 @@ func main() {
 	crossSendCmd.Flags().StringVar(&chainIDsStr, "chain-ids", "", "Comma-separated chain IDs (e.g., '1,2,3')")
 	crossSendCmd.Flags().StringVar(&value, "value", "0", "Value to send")
 	crossSendCmd.MarkFlagRequired("chain-ids")
+	crossSendCmd.MarkFlagRequired("value")
 
+	// RegistEICN 命令
+	registEICNCmd := &cobra.Command{
+		Use:   "regist-eICN",
+		Short: "Regist EICN",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			sourceConfig, err := config.LoadConfig(cfgFile)
+			if err != nil {
+				return fmt.Errorf("failed to load config: %v", err)
+			}
+			targetConfig, err := config.LoadConfig(targetConfigFile)
+			if err != nil {
+				return fmt.Errorf("failed to load config: %v", err)
+			}
+			if err := scripts.RegistEICN(sourceConfig, targetConfig); err != nil {
+				return fmt.Errorf("regist-eICN failed: %v", err)
+			}
+			return nil
+		},
+	}
+	registEICNCmd.Flags().StringVar(&targetConfigFile, "target-config", "config.yaml", "Target config file path")
+	registEICNCmd.MarkFlagRequired("target-config")
 	// 添加子命令到根命令
 	rootCmd.AddCommand(
 		deployCmd,
 		crossSendCmd,
+		registEICNCmd,
 	)
 
 	// 执行
