@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math/big"
 	"net/http"
 
@@ -13,23 +14,23 @@ import (
 
 // ITransmitterClient 定义了 Transmitter 客户端的接口
 type ITransmitterClient interface {
-	CrossReceive(data1, data2 []byte) error
-	RegisterEICN(url string, chainID int) error
+	CrossReceive(chainId *big.Int, data1, data2 []byte) error
+	RegisterEICN(url string, chainID *big.Int, targetServerURL string) error
 	SyncHeader(chainID *big.Int, number *big.Int, root common.Hash) error
 }
 
 // TransmitterClient 结构体用于与 Transmitter 服务器通信
 type TransmitterClient struct {
-	baseURL string
+	storage map[*big.Int]string
 }
 
 // 确保 TransmitterClient 实现了 ITransmitterClient 接口
 var _ ITransmitterClient = (*TransmitterClient)(nil)
 
 // NewTransmitterClient 创建一个新的 TransmitterClient 实例
-func NewTransmitterClient(host string, port string) *TransmitterClient {
+func NewTransmitterClient(storage map[*big.Int]string) *TransmitterClient {
 	return &TransmitterClient{
-		baseURL: fmt.Sprintf("http://%s:%s", host, port),
+		storage: storage,
 	}
 }
 
@@ -41,8 +42,8 @@ type RequestBody struct {
 
 // RegisterRequest 结构体表示 registerEICN 请求参数
 type RegisterRequest struct {
-	URL     string `json:"url"`
-	ChainID int    `json:"chainId"`
+	URL     string   `json:"url"`
+	ChainID *big.Int `json:"chainId"`
 }
 
 // ResponseBody 结构体表示服务器返回数据
@@ -59,7 +60,15 @@ type RequestHeader struct {
 }
 
 // CrossReceive 发送跨链数据到服务器
-func (c *TransmitterClient) CrossReceive(data1, data2 []byte) error {
+func (c *TransmitterClient) CrossReceive(chainId *big.Int, data1, data2 []byte) error {
+	var targetServerURL string
+	if _url, ok := c.storage[chainId]; !ok {
+		log.Fatalf("未找到链ID %d 的 URL", chainId)
+		return nil
+	} else {
+		targetServerURL = _url
+	}
+
 	reqBody := RequestBody{
 		Data1: data1,
 		Data2: data2,
@@ -70,7 +79,7 @@ func (c *TransmitterClient) CrossReceive(data1, data2 []byte) error {
 		return fmt.Errorf("序列化请求数据失败: %v", err)
 	}
 
-	resp, err := http.Post(c.baseURL+"/CrossReceive", "application/json", bytes.NewBuffer(jsonData))
+	resp, err := http.Post(targetServerURL+"/CrossReceive", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("发送请求失败: %v", err)
 	}
@@ -94,7 +103,8 @@ func (c *TransmitterClient) CrossReceive(data1, data2 []byte) error {
 }
 
 // RegisterEICN 注册 URL 和 ChainID
-func (c *TransmitterClient) RegisterEICN(url string, chainID int) error {
+func (c *TransmitterClient) RegisterEICN(url string, chainID *big.Int, targetServerURL string) error {
+
 	reqBody := RegisterRequest{
 		URL:     url,
 		ChainID: chainID,
@@ -105,7 +115,7 @@ func (c *TransmitterClient) RegisterEICN(url string, chainID int) error {
 		return fmt.Errorf("序列化请求数据失败: %v", err)
 	}
 
-	resp, err := http.Post(c.baseURL+"/registerEICN", "application/json", bytes.NewBuffer(jsonData))
+	resp, err := http.Post(targetServerURL+"/registerEICN", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("发送请求失败: %v", err)
 	}
@@ -130,6 +140,14 @@ func (c *TransmitterClient) RegisterEICN(url string, chainID int) error {
 
 // SyncHeader 发送区块头同步数据到服务器
 func (c *TransmitterClient) SyncHeader(chainID *big.Int, number *big.Int, root common.Hash) error {
+	var targetServerURL string
+	if _url, ok := c.storage[chainID]; !ok {
+		log.Fatalf("未找到链ID %d 的 URL", chainID)
+		return nil
+	} else {
+		targetServerURL = _url
+	}
+
 	reqBody := RequestHeader{
 		ChainID: chainID,
 		Number:  number,
@@ -141,7 +159,7 @@ func (c *TransmitterClient) SyncHeader(chainID *big.Int, number *big.Int, root c
 		return fmt.Errorf("序列化请求数据失败: %v", err)
 	}
 
-	resp, err := http.Post(c.baseURL+"/SyncHeader", "application/json", bytes.NewBuffer(jsonData))
+	resp, err := http.Post(targetServerURL+"/SyncHeader", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("发送请求失败: %v", err)
 	}

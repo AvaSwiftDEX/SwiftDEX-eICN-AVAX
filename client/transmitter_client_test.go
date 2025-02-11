@@ -27,15 +27,18 @@ func TestTransmitterClient_CrossReceive(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// 创建客户端
-	client := &TransmitterClient{baseURL: server.URL}
+	// 创建存储和客户端
+	storage := make(map[*big.Int]string)
+	chainID := big.NewInt(1)
+	storage[chainID] = server.URL
+	client := NewTransmitterClient(storage)
 
 	// 测试数据
 	data1 := []byte("test data 1")
 	data2 := []byte("test data 2")
 
 	// 执行测试
-	err := client.CrossReceive(data1, data2)
+	err := client.CrossReceive(chainID, data1, data2)
 	if err != nil {
 		t.Errorf("CrossReceive 失败: %v", err)
 	}
@@ -58,15 +61,16 @@ func TestTransmitterClient_RegisterEICN(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// 创建客户端
-	client := &TransmitterClient{baseURL: server.URL}
+	// 创建存储和客户端
+	storage := make(map[*big.Int]string)
+	client := NewTransmitterClient(storage)
 
 	// 测试数据
 	url := "http://example.com"
-	chainID := 1
+	chainID := big.NewInt(1)
 
 	// 执行测试
-	err := client.RegisterEICN(url, chainID)
+	err := client.RegisterEICN(url, chainID, server.URL)
 	if err != nil {
 		t.Errorf("RegisterEICN 失败: %v", err)
 	}
@@ -89,11 +93,13 @@ func TestTransmitterClient_SyncHeader(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// 创建客户端
-	client := &TransmitterClient{baseURL: server.URL}
+	// 创建存储和客户端
+	storage := make(map[*big.Int]string)
+	chainID := big.NewInt(1)
+	storage[chainID] = server.URL
+	client := NewTransmitterClient(storage)
 
 	// 测试数据
-	chainID := big.NewInt(1)
 	number := big.NewInt(100)
 	root := common.HexToHash("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
 
@@ -101,17 +107,6 @@ func TestTransmitterClient_SyncHeader(t *testing.T) {
 	err := client.SyncHeader(chainID, number, root)
 	if err != nil {
 		t.Errorf("SyncHeader 失败: %v", err)
-	}
-}
-
-func TestNewTransmitterClient(t *testing.T) {
-	host := "localhost"
-	port := "8080"
-	client := NewTransmitterClient(host, port)
-
-	expectedURL := "http://localhost:8080"
-	if client.baseURL != expectedURL {
-		t.Errorf("期望 baseURL 为 %s，得到 %s", expectedURL, client.baseURL)
 	}
 }
 
@@ -127,24 +122,27 @@ func TestTransmitterClient_ErrorHandling(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// 创建客户端
-	client := &TransmitterClient{baseURL: server.URL}
+	// 创建存储和客户端
+	storage := make(map[*big.Int]string)
+	chainID := big.NewInt(1)
+	storage[chainID] = server.URL
+	client := NewTransmitterClient(storage)
 
 	// 测试 CrossReceive 错误处理
-	err := client.CrossReceive([]byte("test"), []byte("test"))
+	err := client.CrossReceive(chainID, []byte("test"), []byte("test"))
 	if err == nil {
 		t.Error("期望 CrossReceive 返回错误，但得到 nil")
 	}
 
 	// 测试 RegisterEICN 错误处理
-	err = client.RegisterEICN("http://example.com", 1)
+	err = client.RegisterEICN("http://example.com", chainID, server.URL)
 	if err == nil {
 		t.Error("期望 RegisterEICN 返回错误，但得到 nil")
 	}
 
 	// 测试 SyncHeader 错误处理
 	root := common.HexToHash("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
-	err = client.SyncHeader(big.NewInt(1), big.NewInt(100), root)
+	err = client.SyncHeader(chainID, big.NewInt(100), root)
 	if err == nil {
 		t.Error("期望 SyncHeader 返回错误，但得到 nil")
 	}
