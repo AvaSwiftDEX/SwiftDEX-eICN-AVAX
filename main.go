@@ -8,10 +8,9 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/client"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/config"
-	"github.com/kimroniny/SuperRunner-eICN-eth2/scripts"
+	"github.com/kimroniny/SuperRunner-eICN-eth2/scripts/scripts"
 	sdk "github.com/kimroniny/SuperRunner-eICN-eth2/sdk"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/server"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/watcher"
@@ -40,7 +39,7 @@ func main() {
 	wg := sync.WaitGroup{}
 
 	// run contractSDK
-	privateKey, err := crypto.HexToECDSA(cfg.Chain.KeyHex)
+	privateKey, err := cfg.ReadPrivateKey()
 	if err != nil {
 		panic(err)
 	}
