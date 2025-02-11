@@ -28,9 +28,9 @@ func TestTransmitterClient_CrossReceive(t *testing.T) {
 	defer server.Close()
 
 	// 创建存储和客户端
-	storage := make(map[*big.Int]string)
+	storage := make(map[string]string)
 	chainID := big.NewInt(1)
-	storage[chainID] = server.URL
+	storage[chainID.String()] = server.URL
 	client := NewTransmitterClient(storage)
 
 	// 测试数据
@@ -62,7 +62,7 @@ func TestTransmitterClient_RegisterEICN(t *testing.T) {
 	defer server.Close()
 
 	// 创建存储和客户端
-	storage := make(map[*big.Int]string)
+	storage := make(map[string]string)
 	client := NewTransmitterClient(storage)
 
 	// 测试数据
@@ -94,9 +94,9 @@ func TestTransmitterClient_SyncHeader(t *testing.T) {
 	defer server.Close()
 
 	// 创建存储和客户端
-	storage := make(map[*big.Int]string)
+	storage := make(map[string]string)
 	chainID := big.NewInt(1)
-	storage[chainID] = server.URL
+	storage[chainID.String()] = server.URL
 	client := NewTransmitterClient(storage)
 
 	// 测试数据
@@ -123,9 +123,9 @@ func TestTransmitterClient_ErrorHandling(t *testing.T) {
 	defer server.Close()
 
 	// 创建存储和客户端
-	storage := make(map[*big.Int]string)
+	storage := make(map[string]string)
 	chainID := big.NewInt(1)
-	storage[chainID] = server.URL
+	storage[chainID.String()] = server.URL
 	client := NewTransmitterClient(storage)
 
 	// 测试 CrossReceive 错误处理

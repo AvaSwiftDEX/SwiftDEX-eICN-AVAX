@@ -22,7 +22,7 @@ type ITransmitterClient interface {
 
 // TransmitterClient 结构体用于与 Transmitter 服务器通信
 type TransmitterClient struct {
-	storage map[*big.Int]string
+	storage map[string]string
 	log     *logrus.Entry
 }
 
@@ -30,7 +30,10 @@ type TransmitterClient struct {
 var _ ITransmitterClient = (*TransmitterClient)(nil)
 
 // NewTransmitterClient 创建一个新的 TransmitterClient 实例
-func NewTransmitterClient(storage map[*big.Int]string) *TransmitterClient {
+func NewTransmitterClient(storage map[string]string) *TransmitterClient {
+	if logger.GetLogger() == nil {
+		logger.InitLogger()
+	}
 	return &TransmitterClient{
 		storage: storage,
 		log:     logger.NewComponent("TransmitterClient"),
@@ -65,7 +68,7 @@ type RequestHeader struct {
 // CrossReceive 发送跨链数据到服务器
 func (c *TransmitterClient) CrossReceive(chainId *big.Int, data1, data2 []byte) error {
 	var targetServerURL string
-	if _url, ok := c.storage[chainId]; !ok {
+	if _url, ok := c.storage[chainId.String()]; !ok {
 		c.log.Info(fmt.Sprintf("未找到链(#%d)的 URL", chainId))
 		return nil
 	} else {
@@ -153,10 +156,11 @@ func (c *TransmitterClient) RegisterEICN(url string, chainID *big.Int, targetSer
 // SyncHeader 发送区块头同步数据到服务器
 func (c *TransmitterClient) SyncHeader(chainID *big.Int, number *big.Int, root common.Hash) error {
 	var targetServerURL string
-	if _url, ok := c.storage[chainID]; !ok {
+	// TODO sync header to all chains
+	if _url, ok := c.storage[chainID.String()]; !ok {
 		c.log.WithFields(logrus.Fields{
 			"method": "SyncHeader",
-		}).Info("未找到链的 URL")
+		}).Info(fmt.Sprintf("未找到链(#%d)的 URL", chainID))
 		return nil
 	} else {
 		targetServerURL = _url
