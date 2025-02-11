@@ -58,3 +58,16 @@ abigen --bin=output/SR2PC.bin --abi=output/SR2PC.abi --pkg=SR2PC --out=SR2PC/SR2
 ```bash 
 geth --dev --dev.period 0 --keystore ./node/keystore --allow-insecure-unlock --http --http.api eth,web3,net,miner,txpool,admin --ws --ws.api eth,web3,net
 ```
+
+## deploy contract
+
+```bash
+./scripts/deploy.sh --config=config.yaml
+```
+
+## send cross-chain message
+
+```bash
+./scripts/cross_send.sh --chain-ids="1,2,3" --value="100" --config=config.yaml
+```
+
