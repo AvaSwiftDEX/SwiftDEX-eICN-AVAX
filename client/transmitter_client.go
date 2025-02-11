@@ -7,6 +7,7 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/logger"
@@ -155,16 +156,6 @@ func (c *TransmitterClient) RegisterEICN(url string, chainID *big.Int, targetSer
 
 // SyncHeader 发送区块头同步数据到服务器
 func (c *TransmitterClient) SyncHeader(chainID *big.Int, number *big.Int, root common.Hash) error {
-	var targetServerURL string
-	// TODO sync header to all chains
-	if _url, ok := c.storage[chainID.String()]; !ok {
-		c.log.WithFields(logrus.Fields{
-			"method": "SyncHeader",
-		}).Info(fmt.Sprintf("未找到链(#%d)的 URL", chainID))
-		return nil
-	} else {
-		targetServerURL = _url
-	}
 
 	reqBody := RequestHeader{
 		ChainID: chainID,
@@ -177,13 +168,30 @@ func (c *TransmitterClient) SyncHeader(chainID *big.Int, number *big.Int, root c
 		return fmt.Errorf("序列化请求数据失败: %v", err)
 	}
 
-	c.log.WithFields(logrus.Fields{
-		"method":        "SyncHeader",
-		"targetChainID": chainID,
-		"blockNum":      number,
-		"headerRoot":    root.Hex(),
-	}).Info("call target server's SyncHeader")
+	wg := sync.WaitGroup{}
+	for targetChainID, url := range c.storage {
+		wg.Add(1)
+		go func(targetChainID string, url string) {
+			defer wg.Done()
+			err := c.syncHeaderToSingleChain(url, jsonData)
+			if err != nil {
+				c.log.Warn(fmt.Sprintf("sync header to single chain(#%s), while error: %v", targetChainID, err))
+				return
+			}
+			c.log.WithFields(logrus.Fields{
+				"method":     "SyncHeader",
+				"chanID":     chainID,
+				"blockNum":   number,
+				"headerRoot": root.Hex(),
+			}).Info(fmt.Sprintf("sync header to single chain(#%s) success", targetChainID))
+		}(targetChainID, url)
+	}
+	wg.Wait()
 
+	return nil
+}
+
+func (c *TransmitterClient) syncHeaderToSingleChain(targetServerURL string, jsonData []byte) error {
 	resp, err := http.Post(targetServerURL+"/SyncHeader", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("发送请求失败: %v", err)
