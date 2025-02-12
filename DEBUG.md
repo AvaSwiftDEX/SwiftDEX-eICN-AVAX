@@ -12,3 +12,4 @@ gcc --version
 7. map的key不能用*big.Int, 需要用string, 因为\*big.Int的值虽然相同, 但是地址不同, 所以不能作为key
 8. log.Fatal 会直接退出程序, 所以不能随便使用
 9. *big.Int 比较大小时, 不能直接用==, 需要用Cmp方法
+10. geth v1.15.0 的 basefeePerGas 默认很高，交易如果设置了较低的gasPrice，就无法打包，所以需要设置较低的basefeePerGas，我在 geth 源代码中设置成了 10，baseFeePerGas会在geth运行的过程中根据区块大小不断变化，最低是7. 源代码的位置是 params/protocol_params.go，参数是InitialBaseFee
