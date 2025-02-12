@@ -27,7 +27,7 @@ func CrossSend(ctx context.Context, config *config.Config, args []CrossSendArg) 
 	fmt.Println("cross send start")
 
 	// get private key
-	privateKey, err := crypto.HexToECDSA(config.Chain.KeyHex)
+	privateKey, err := config.ReadPrivateKey()
 	if err != nil {
 		return err
 	}
