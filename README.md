@@ -37,8 +37,8 @@ export PATH="$PATH:$(go env GOPATH)/bin"
 
 ```bash
 # install abigen in go-ethereum
-go get -u github.com/ethereum/go-ethereum
-cd $GOPATH/src/github.com/ethereum/go-ethereum/
+git clone --depth 1 --branch v1.15.0 https://github.com/ethereum/go-ethereum.git
+cd go-ethereum
 make
 make devtools
 ```
@@ -47,7 +47,7 @@ make devtools
 
 ```bash
 # generate abi and bin for contract SR2PC
-solc --abi --bin --overwrite --optimize --optimize-runs 200 -o output ../SuperRunner-contracts/contracts/2pc-master/SR2PC.sol --allow-paths .
+solc --abi --bin --overwrite --optimize --optimize-runs 200 -o output ../SuperRunner-Contracts/contracts/2pc-master/SR2PC.sol --allow-paths .
 # generate .go
 mkdir SR2PC
 abigen --bin=output/SR2PC.bin --abi=output/SR2PC.abi --pkg=SR2PC --out=SR2PC/SR2PC.go
@@ -55,7 +55,7 @@ abigen --bin=output/SR2PC.bin --abi=output/SR2PC.abi --pkg=SR2PC --out=SR2PC/SR2
 
 ## start geth dev mode
 
-```bash 
+```bash
 geth --dev --dev.period 3 --keystore ./node/keystore --allow-insecure-unlock --http --http.api eth,web3,net,miner,txpool,admin --ws --ws.api eth,web3,net --http.port 8545 --ws.port 8546
 ```
 
@@ -70,4 +70,3 @@ geth --dev --dev.period 3 --keystore ./node/keystore --allow-insecure-unlock --h
 ```bash
 ./scripts/cross_send.sh --chain-ids="1,2,3" --value="100" --config=config.yaml
 ```
-

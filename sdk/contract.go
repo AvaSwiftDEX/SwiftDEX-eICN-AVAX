@@ -174,11 +174,11 @@ func (sdk *ContractSDK) CrossReceive(data *CrossData) {
 	sdk.log.WithFields(logrus.Fields{
 		"method": "CrossReceive",
 	}).Info(
-		"Received CM and proof data, source chainID: ", cm.SourceChainId, 
-		", target chainID: ", cm.TargetChainId, 
-		", phase: ", cm.Phase, 
-		", nonce: ", cm.Nonce, 
-		", source height: ", cm.SourceHeight, 
+		"Received CM and proof data, source chainID: ", cm.SourceChainId,
+		", target chainID: ", cm.TargetChainId,
+		", phase: ", cm.Phase,
+		", nonce: ", cm.Nonce,
+		", source height: ", cm.SourceHeight,
 		", cm input height: ", cm.CmInputHeight,
 	)
 
@@ -245,12 +245,12 @@ func (sdk *ContractSDK) WaitCMHashData() {
 			}).Fatal("CrossReceive transaction failed: ", cmHash.Hash.Hex())
 			return
 		}
-		// check whether the tx needs to be resend
-		sdk.InstanceCM.ParseSendCMHash()
-		boundContract := bind.NewBoundContract(sdk.Address, SR2PC.SR2PCMetaData.GetAbi(), sdk.HttpClient, auth, sdk.InstanceCM.SR2PCCaller)
-		for _, log := range receipt.Logs {
-			sdk.InstanceCM.C
-		}
+		// TODO: check whether the tx needs to be resend
+		// sdk.InstanceCM.ParseSendCMHash()
+		// boundContract := bind.NewBoundContract(sdk.Address, SR2PC.SR2PCMetaData.GetAbi(), sdk.HttpClient, auth, sdk.InstanceCM.SR2PCCaller)
+		// for _, log := range receipt.Logs {
+		// 	sdk.InstanceCM.C
+		// }
 	case <-sdk.ctx.Done():
 		return
 	}

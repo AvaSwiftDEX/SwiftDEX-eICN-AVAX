@@ -27,6 +27,16 @@ type CrossReceiveData struct {
 	Data2   []byte
 }
 
+type MetricsData struct {
+	TransactionHash [32]byte
+	CmHash          [32]byte
+	ChainId         *big.Int
+	Height          *big.Int
+	Phase           uint8
+	IsConfirmed     bool
+	ByHeader        bool
+}
+
 type Watcher struct {
 	ctx               context.Context
 	httpUrl           string
@@ -38,6 +48,7 @@ type Watcher struct {
 	transmitterClient *client.ITransmitterClient
 	headerCh          chan *SyncHeaderData
 	crossReceiveCh    chan *CrossReceiveData
+	metricsCh         chan *MetricsData
 	log               *logrus.Entry
 }
 
@@ -87,6 +98,7 @@ func (wc *Watcher) Run() {
 	go wc.SendHeader()
 	go wc.MonitorEvent()
 	go wc.CrossReceive()
+	go wc.MonitorMetrics()
 }
 
 func (wc *Watcher) MonitorBlock() {
@@ -222,6 +234,59 @@ func (wc *Watcher) CrossReceive() {
 			if err != nil {
 				wc.log.Fatal("send crossReceive to transmitter client, while error: ", err)
 			}
+		}
+	}
+}
+
+func (wc *Watcher) MonitorMetrics() {
+	if wc.httpClient == nil {
+		wc.log.Fatal("http client is nil")
+	}
+	if wc.wsClient == nil {
+		wc.log.Fatal("ws client is nil")
+	}
+	wc.log.Info("start to monitor metrics")
+	instance, err := SR2PC.NewSR2PC(wc.address, wc.wsClient)
+	if err != nil {
+		wc.log.Fatal("new SR2PC instance, while error: ", err)
+	}
+	logs := make(chan *SR2PC.SR2PCMetrics)
+	sub, err := instance.WatchMetrics(nil, logs)
+	if err != nil {
+		wc.log.Fatal("watchMetrics, while error: ", err)
+	}
+	for {
+		select {
+		case <-wc.ctx.Done():
+			return
+		case err := <-sub.Err():
+			wc.log.Fatal("subscribeMetrics, the sub error: ", err)
+		case vLog := <-logs:
+			wc.log.Info(fmt.Sprintf("find a new log, metrics: %v", vLog))
+			wc.metricsCh <- &MetricsData{
+				TransactionHash: vLog.TransactionHash,
+				CmHash:          vLog.CmHash,
+				ChainId:         vLog.ChainId,
+				Height:          vLog.Height,
+				Phase:           vLog.Phase,
+				IsConfirmed:     vLog.IsConfirmed,
+				ByHeader:        vLog.ByHeader,
+			}
+		}
+	}
+}
+
+func (wc *Watcher) Metrics() {
+	for {
+		select {
+		case <-wc.ctx.Done():
+			return
+		case data := <-wc.metricsCh:
+			wc.log.WithFields(logrus.Fields{
+				"method":          "Metrics",
+				"transactionHash": hex.EncodeToString(data.TransactionHash[:]),
+			}).Info("call transmitter client's Metrics")
+			// TODO: call collector client
 		}
 	}
 }
