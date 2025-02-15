@@ -12,7 +12,7 @@ The timestamp of cross-chain message issue is included in the coordinator chain'
 - unfinalized timestamp
   - SendCMHash
 - finalized timestamp
-  - Finalized Block of ISSUE CM
+  - timestamp of the finalized block of ISSUE CM
   
 #### 2. Cross-Chain Message Prepare on the target chain
 
@@ -27,20 +27,24 @@ The timestamp of cross-chain message receive is included in the target chain's b
 #### 3. Cross-Chain Message Back on the source chain
 
 The timestamp of cross-chain message back is included in the source chain's block.
-- unfinalized timestamp
-- 
-- finalized timestamp
-- confirmed timestamp
+- finalized timestamp: the back message is finalized in the block
+  - Finalized Block of BACK CM
+- confirmed timestamp: the header of the back message is finalized in the block
+  - Finalized Block of header (BACK CM) 
 
 #### 4. Cross-Chain Message Commit/Rollback on the coordinator chain
 
 The timestamp of cross-chain message commit is included in the coordinator chain's block.
 The back messages are all confirmed on the coordinator chain once the block header (including the prepare messages) is finalized on the coordinator chain.
 - unfinalized timestamp: the timestamp of the block header is included in the block
+  - SendCMHash
 - finalized timestamp: the timestamp of the block header is finalized
+  - Finalized Block of Commit CM
 
 #### 5. Cross-Chain Message Commit/Rollback on the target chain
 
 The timestamp of cross-chain message commit is finalized on the target chain.
-- unfinalized timestamp: the timestamp of the commit message is included in the block
 - finalized timestamp: the timestamp of the commit message is finalized
+  - Finalized Block of Commit CM
+- confirmed timestamp: the header of the commit message is finalized
+  - Finalized Block of header (COMMIT CM)

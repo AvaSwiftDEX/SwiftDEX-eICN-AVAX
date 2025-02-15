@@ -53,6 +53,8 @@ type ContractSDK struct {
 	PublicKey     *ecdsa.PublicKey
 	ChainId       *big.Int
 	Address       common.Address
+	InstanceCM    *SR2PC.SR2PC
+	InstanceHDR   *SR2PC.SR2PC
 	Serv2SDK_CM   chan *CrossData   // 容量为1024的通道
 	Serv2SDK_HDR  chan *HeaderData  // 容量为1025的通道
 	WaitCMHashCh  chan *CMHashData  // 容量为1024的通道
@@ -81,6 +83,17 @@ func NewContractSDK(ctx context.Context, url string, chainId *big.Int, address c
 		log.Fatal(err)
 		return nil
 	}
+	// get instance
+	instanceCM, err := SR2PC.NewSR2PC(address, httpclient)
+	if err != nil {
+		log.Fatal(err)
+		return nil
+	}
+	instanceHDR, err := SR2PC.NewSR2PC(address, httpclient)
+	if err != nil {
+		log.Fatal(err)
+		return nil
+	}
 
 	return &ContractSDK{
 		ctx:           ctx,
@@ -91,6 +104,8 @@ func NewContractSDK(ctx context.Context, url string, chainId *big.Int, address c
 		PrivateKey:    privateKey,
 		PublicKey:     publicKeyECDSA,
 		HttpClient:    httpclient,
+		InstanceCM:    instanceCM,
+		InstanceHDR:   instanceHDR,
 		Serv2SDK_CM:   make(chan *CrossData, 1024),
 		Serv2SDK_HDR:  make(chan *HeaderData, 1024),
 		WaitCMHashCh:  make(chan *CMHashData, 1024),
@@ -193,17 +208,8 @@ func (sdk *ContractSDK) CrossReceive(data *CrossData) {
 	gasPrice := 100
 	auth.GasPrice = big.NewInt(int64(gasPrice))
 
-	// get instance
-	instance, err := SR2PC.NewSR2PC(sdk.Address, sdk.HttpClient)
-	if err != nil {
-		sdk.log.WithFields(logrus.Fields{
-			"method": "CrossReceive",
-		}).Fatal(err)
-		return
-	}
-
 	// send transaction
-	tx, err := instance.CrossReceive(auth, cm, proof)
+	tx, err := sdk.InstanceCM.CrossReceive(auth, cm, proof)
 	if err != nil {
 		sdk.log.WithFields(logrus.Fields{
 			"method": "CrossReceive",
@@ -238,6 +244,12 @@ func (sdk *ContractSDK) WaitCMHashData() {
 				"method": "WaitCMHashData",
 			}).Fatal("CrossReceive transaction failed: ", cmHash.Hash.Hex())
 			return
+		}
+		// check whether the tx needs to be resend
+		sdk.InstanceCM.ParseSendCMHash()
+		boundContract := bind.NewBoundContract(sdk.Address, SR2PC.SR2PCMetaData.GetAbi(), sdk.HttpClient, auth, sdk.InstanceCM.SR2PCCaller)
+		for _, log := range receipt.Logs {
+			sdk.InstanceCM.C
 		}
 	case <-sdk.ctx.Done():
 		return
@@ -282,21 +294,12 @@ func (sdk *ContractSDK) SyncHeader(data *HeaderData) {
 	gasPrice := 100
 	auth.GasPrice = big.NewInt(int64(gasPrice))
 
-	// get instance
-	instance, err := SR2PC.NewSR2PC(sdk.Address, sdk.HttpClient)
-	if err != nil {
-		sdk.log.WithFields(logrus.Fields{
-			"method": "SyncHeader",
-		}).Fatal(err)
-		return
-	}
-
 	// send transaction
 	header := SR2PC.SR2PCBlockHeader{
 		Height: data.number,
 		Root:   data.root,
 	}
-	tx, err := instance.SyncHeader(auth, data.chainId, header)
+	tx, err := sdk.InstanceHDR.SyncHeader(auth, data.chainId, header)
 	if err != nil {
 		sdk.log.WithFields(logrus.Fields{
 			"method": "SyncHeader",

@@ -4,9 +4,9 @@ http:
     base_url: http://127.0.0.1:8080
 chain:
     id: "1"
-    http_url: http://10.210.143.97:7545
-    ws_url: ws://10.210.143.97:7546
+    http_url: http://127.0.0.1:8545
+    ws_url: ws://127.0.0.1:8546
     key_file: node/keystore/UTC--2025-02-08T06-12-23.376721660Z--a8a410a56f93e14fb5a71f5968958851915b6909
     key_hex: c45ba5d6de0e502aefd23c98b40a2c9018e2e0286dde4fdb542ded619cefc8bd
-    use_file: false
-    address: 0xa7123063c4de62495497f3db1fe77d459d13583e
+    use_file: true
+    address: 0xff3cdd50ad238282548abb7d4ba9472caad48c9e
