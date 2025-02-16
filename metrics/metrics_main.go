@@ -10,7 +10,7 @@ import (
 
 func main() {
 	// 定义命令行参数
-	url := flag.String("url", "localhost:8090", "metrics collector server url")
+	url := flag.String("url", "127.0.0.1:8090", "metrics collector server url")
 	flag.Parse()
 
 	// 初始化日志
