@@ -94,7 +94,9 @@ func NewContractSDK(ctx context.Context, url string, chainId *big.Int, address c
 		log.Fatal(err)
 		return nil
 	}
-
+	if logger.GetLogger() == nil {
+		logger.InitLogger()
+	}
 	return &ContractSDK{
 		ctx:           ctx,
 		URL:           url,

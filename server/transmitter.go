@@ -27,6 +27,9 @@ type Transmitter struct {
 
 // NewTransmitter 创建一个新的 Transmitter 实例
 func NewTransmitter(host string, port uint16, wg *sync.WaitGroup, contractSDK *sdk.ContractSDK, storage map[string]string) *Transmitter {
+	if logger.GetLogger() == nil {
+		logger.InitLogger()
+	}
 	return &Transmitter{
 		host:        host,
 		port:        port,
