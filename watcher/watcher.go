@@ -13,6 +13,7 @@ import (
 	"github.com/kimroniny/SuperRunner-eICN-eth2/client"
 	ethclientext "github.com/kimroniny/SuperRunner-eICN-eth2/ethclientExt"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/logger"
+	"github.com/kimroniny/SuperRunner-eICN-eth2/metrics/metrics"
 	"github.com/sirupsen/logrus"
 )
 
@@ -27,16 +28,6 @@ type CrossReceiveData struct {
 	Data2   []byte
 }
 
-type MetricsData struct {
-	TransactionHash [32]byte
-	CmHash          [32]byte
-	ChainId         *big.Int
-	Height          *big.Int
-	Phase           uint8
-	IsConfirmed     bool
-	ByHeader        bool
-}
-
 type Watcher struct {
 	ctx               context.Context
 	httpUrl           string
@@ -48,7 +39,8 @@ type Watcher struct {
 	transmitterClient *client.ITransmitterClient
 	headerCh          chan *SyncHeaderData
 	crossReceiveCh    chan *CrossReceiveData
-	metricsCh         chan *MetricsData
+	metricsCh         chan *metrics.MetricsData
+	collectorClient   *metrics.CollectorClient
 	log               *logrus.Entry
 }
 
@@ -59,10 +51,29 @@ func NewWatcher(
 	address common.Address,
 	chainId *big.Int,
 	transmitter client.ITransmitterClient,
+	collectorURL string,
 ) (*Watcher, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	if logger.GetLogger() == nil {
+		logger.InitLogger()
+	}
+
+	// 验证参数
+	if chainId == nil {
+		return nil, fmt.Errorf("chainId cannot be nil")
+	}
+	if chainId.Sign() < 0 {
+		return nil, fmt.Errorf("chainId cannot be negative")
+	}
+	if transmitter == nil {
+		return nil, fmt.Errorf("transmitter cannot be nil")
+	}
+	if collectorURL == "" {
+		return nil, fmt.Errorf("collectorURL cannot be empty")
+	}
+
 	wc := &Watcher{
 		ctx:               ctx,
 		httpUrl:           httpUrl,
@@ -74,22 +85,53 @@ func NewWatcher(
 		wsClient:          nil,
 		headerCh:          make(chan *SyncHeaderData, 1024),
 		crossReceiveCh:    make(chan *CrossReceiveData, 1024),
+		metricsCh:         make(chan *metrics.MetricsData, 1024),
+		collectorClient:   metrics.NewCollectorClient(collectorURL),
 		log:               logger.NewComponent("Watcher"),
 	}
+
+	// 如果提供了 HTTP URL，尝试连接
 	if httpUrl != "" {
 		client, err := ethclientext.Dial(httpUrl)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to connect to HTTP endpoint: %v", err)
+		}
+		// 验证连接是否正常
+		_, err = client.BlockNumber(ctx)
+		if err != nil {
+			client.Close()
+			return nil, fmt.Errorf("failed to verify HTTP connection: %v", err)
 		}
 		wc.httpClient = client
 	}
+
+	// 如果提供了 WebSocket URL，尝试连接
 	if wsUrl != "" {
 		client, err := ethclientext.Dial(wsUrl)
 		if err != nil {
-			return nil, err
+			// 如果 HTTP 客户端已经创建，需要关闭它
+			if wc.httpClient != nil {
+				wc.httpClient.Close()
+			}
+			return nil, fmt.Errorf("failed to connect to WebSocket endpoint: %v", err)
+		}
+		// 验证连接是否正常
+		_, err = client.BlockNumber(ctx)
+		if err != nil {
+			client.Close()
+			if wc.httpClient != nil {
+				wc.httpClient.Close()
+			}
+			return nil, fmt.Errorf("failed to verify WebSocket connection: %v", err)
 		}
 		wc.wsClient = client
 	}
+
+	// 验证 collector 是否有效
+	if _, err := wc.collectorClient.GetMetrics(); err != nil {
+		return nil, fmt.Errorf("failed to verify collector: %v", err)
+	}
+
 	return wc, nil
 }
 
@@ -103,10 +145,12 @@ func (wc *Watcher) Run() {
 
 func (wc *Watcher) MonitorBlock() {
 	if wc.wsClient == nil {
-		wc.log.Fatal("ws client is nil")
+		wc.log.Error("ws client is nil")
+		return
 	}
 	if wc.httpClient == nil {
-		wc.log.Fatal("http client is nil")
+		wc.log.Error("http client is nil")
+		return
 	}
 
 	wc.log.Info("start to monitor block")
@@ -114,20 +158,23 @@ func (wc *Watcher) MonitorBlock() {
 	headers := make(chan *types.Header)
 	sub, err := wc.wsClient.SubscribeNewHead(context.Background(), headers)
 	if err != nil {
-		wc.log.Fatal("subscribeHeader, the sub error: ", err)
+		wc.log.WithError(err).Error("failed to subscribe to new headers")
+		return
 	}
 	for {
 		select {
 		case <-wc.ctx.Done():
 			return
 		case err := <-sub.Err():
-			wc.log.Fatal("subscribeHeader, the sub error: ", err)
+			wc.log.WithError(err).Error("subscription error")
+			return
 		case header := <-headers:
 			wc.log.Info(fmt.Sprintf("find a new header: block height: %d, block hash: %s", header.Number.Uint64(), header.Hash().Hex()))
 
 			header, err := wc.httpClient.HeaderByNumber(wc.ctx, header.Number)
 			if err != nil {
-				wc.log.Fatal("get block by hash, while error: ", err)
+				wc.log.WithError(err).Error("failed to get block by hash")
+				continue
 			}
 
 			// 发送 header 到 headerCh
@@ -152,9 +199,11 @@ func (wc *Watcher) SendHeader() {
 				"blockNum":   header.Number.Uint64(),
 				"headerRoot": header.Root.Hex(),
 			}).Info("call target server's SyncHeader")
+
 			err := (*wc.transmitterClient).SyncHeader(wc.chainId, header.Number, header.Root)
 			if err != nil {
-				wc.log.Fatal("send header to transmitter client, while error: ", err)
+				wc.log.WithError(err).Error("failed to send header to transmitter client")
+				continue
 			}
 		}
 	}
@@ -162,47 +211,52 @@ func (wc *Watcher) SendHeader() {
 
 func (wc *Watcher) MonitorEvent() {
 	if wc.httpClient == nil {
-		wc.log.Fatal("http client is nil")
+		wc.log.Error("http client is nil")
+		return
 	}
 	if wc.wsClient == nil {
-		wc.log.Fatal("ws client is nil")
+		wc.log.Error("ws client is nil")
+		return
 	}
 	wc.log.Info("start to monitor event")
 	instance, err := SR2PC.NewSR2PC(wc.address, wc.wsClient)
 	if err != nil {
-		wc.log.Fatal("new SR2PC instance, while error: ", err)
+		wc.log.WithError(err).Error("failed to create SR2PC instance")
+		return
 	}
 	logs := make(chan *SR2PC.SR2PCSendCMHash)
 	sub, err := instance.WatchSendCMHash(nil, logs)
 	if err != nil {
-		wc.log.Fatal("watchSendCMHash, while error: ", err)
+		wc.log.WithError(err).Error("failed to watch SendCMHash")
+		return
 	}
 	for {
 		select {
 		case <-wc.ctx.Done():
 			return
 		case err := <-sub.Err():
-			wc.log.Fatal("subscribeSendCMHash, the sub error: ", err)
+			wc.log.WithError(err).Error("subscription error")
+			return
 		case vLog := <-logs:
 			wc.log.Info(fmt.Sprintf("find a new log, cmHash: %s, status: %d", hex.EncodeToString(vLog.CmHash[:]), vLog.Status))
 			cm, err := instance.GetCMByHash(nil, vLog.CmHash)
 			if err != nil {
-				wc.log.Fatal("get cm by hash, while error: ", err)
+				wc.log.WithError(err).Error("failed to get CM by hash")
 				continue
 			}
 			cmBytes, err := json.Marshal(cm)
 			if err != nil {
-				wc.log.Fatal("marshal cm, while error: ", err)
+				wc.log.WithError(err).Error("failed to marshal CM")
 				continue
 			}
 			proof, err := wc.GetProof(instance, &cm)
 			if err != nil {
-				wc.log.Fatal("get proof, while error: ", err)
+				wc.log.WithError(err).Error("failed to get proof")
 				continue
 			}
 			proofBytes, err := json.Marshal(proof)
 			if err != nil {
-				wc.log.Fatal("marshal proof, while error: ", err)
+				wc.log.WithError(err).Error("failed to marshal proof")
 				continue
 			}
 			wc.crossReceiveCh <- &CrossReceiveData{
@@ -232,7 +286,8 @@ func (wc *Watcher) CrossReceive() {
 			}).Info("call transmitter client's CrossReceive")
 			err := (*wc.transmitterClient).CrossReceive(data.chainId, data.Data1, data.Data2)
 			if err != nil {
-				wc.log.Fatal("send crossReceive to transmitter client, while error: ", err)
+				wc.log.WithError(err).Error("failed to send crossReceive to transmitter client")
+				continue
 			}
 		}
 	}
@@ -263,7 +318,7 @@ func (wc *Watcher) MonitorMetrics() {
 			wc.log.Fatal("subscribeMetrics, the sub error: ", err)
 		case vLog := <-logs:
 			wc.log.Info(fmt.Sprintf("find a new log, metrics: %v", vLog))
-			wc.metricsCh <- &MetricsData{
+			wc.metricsCh <- &metrics.MetricsData{
 				TransactionHash: vLog.TransactionHash,
 				CmHash:          vLog.CmHash,
 				ChainId:         vLog.ChainId,
@@ -285,8 +340,11 @@ func (wc *Watcher) Metrics() {
 			wc.log.WithFields(logrus.Fields{
 				"method":          "Metrics",
 				"transactionHash": hex.EncodeToString(data.TransactionHash[:]),
-			}).Info("call transmitter client's Metrics")
-			// TODO: call collector client
+			}).Info("Sending metrics event to collector")
+
+			if err := wc.collectorClient.CollectMetricsEvent(*data); err != nil {
+				wc.log.WithError(err).Error("Failed to send metrics event to collector")
+			}
 		}
 	}
 }
