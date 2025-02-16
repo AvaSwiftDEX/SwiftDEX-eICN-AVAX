@@ -29,6 +29,10 @@ type Config struct {
 		UseFile bool           `yaml:"use_file"`
 		Address common.Address `yaml:"address,omitempty"`
 	} `yaml:"chain"`
+
+	Collector struct {
+		URL string `yaml:"url"`
+	} `yaml:"collector"`
 }
 
 func readPrivateKeyFromFile(keyFile string) (*ecdsa.PrivateKey, error) {
@@ -110,6 +114,8 @@ func createDefaultConfig(filename string) (*Config, error) {
 	config.Chain.KeyHex = "c45ba5d6de0e502aefd23c98b40a2c9018e2e0286dde4fdb542ded619cefc8bd"
 	config.Chain.UseFile = true
 	config.Chain.Address = common.HexToAddress("0x0000000000000000000000000000000000000000")
+
+	config.Collector.URL = "http://127.0.0.1:8090"
 
 	// 保存默认配置到文件
 	if err := config.SaveConfig(filename); err != nil {
