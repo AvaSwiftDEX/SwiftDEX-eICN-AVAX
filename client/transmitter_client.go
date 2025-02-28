@@ -33,7 +33,7 @@ var _ ITransmitterClient = (*TransmitterClient)(nil)
 // NewTransmitterClient 创建一个新的 TransmitterClient 实例
 func NewTransmitterClient(storage map[string]string) *TransmitterClient {
 	if logger.GetLogger() == nil {
-		logger.InitLogger()
+		logger.InitLogger("")
 	}
 	return &TransmitterClient{
 		storage: storage,
@@ -89,7 +89,7 @@ func (c *TransmitterClient) CrossReceive(chainId *big.Int, data1, data2 []byte) 
 	c.log.WithFields(logrus.Fields{
 		"chainID": chainId,
 		"url":     targetServerURL,
-	}).Info("调用 CrossReceive")
+	}).Info("call the counterparty eICN server's CrossReceive")
 
 	resp, err := http.Post(targetServerURL+"/CrossReceive", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
