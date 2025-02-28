@@ -15,7 +15,7 @@ func main() {
 
 	// 初始化日志
 	if logger.GetLogger() == nil {
-		logger.InitLogger()
+		logger.InitLogger("")
 	}
 	log := logger.GetLogger()
 	wg := sync.WaitGroup{}
@@ -25,7 +25,8 @@ func main() {
 	go func() {
 		defer wg.Done()
 		if err := metricsCollectorServer.Start(); err != nil {
-			log.Fatal(err)
+			log.Error(err)
+			return
 		}
 	}()
 

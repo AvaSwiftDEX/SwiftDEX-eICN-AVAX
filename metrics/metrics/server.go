@@ -23,7 +23,7 @@ type CollectorServer struct {
 // NewCollectorServer creates a new instance of CollectorServer
 func NewCollectorServer(address string) *CollectorServer {
 	if logger.GetLogger() == nil {
-		logger.InitLogger()
+		logger.InitLogger("")
 	}
 	cs := &CollectorServer{
 		storage: NewStorage(),
@@ -102,7 +102,7 @@ func (cs *CollectorServer) handleGetMetrics(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	cs.log.WithField("count", len(metrics)).Info("Retrieved metrics data")
+	cs.log.WithField("count", len(metrics)).Info("Received metrics data")
 }
 
 // GetMetrics returns all collected metrics

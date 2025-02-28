@@ -21,7 +21,7 @@ type CollectorClient struct {
 // NewCollectorClient creates a new instance of CollectorClient
 func NewCollectorClient(serverURL string) *CollectorClient {
 	if logger.GetLogger() == nil {
-		logger.InitLogger()
+		logger.InitLogger("")
 	}
 	return &CollectorClient{
 		serverURL: serverURL,
