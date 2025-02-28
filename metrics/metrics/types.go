@@ -13,4 +13,5 @@ type MetricsData struct {
 	Phase           uint8
 	IsConfirmed     bool
 	ByHeader        bool
+	Timestamp       uint64
 }

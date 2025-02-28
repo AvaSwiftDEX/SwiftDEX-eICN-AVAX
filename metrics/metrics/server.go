@@ -81,6 +81,7 @@ func (cs *CollectorServer) handleCollectMetrics(w http.ResponseWriter, r *http.R
 		"phase":           data.Phase,
 		"isConfirmed":     data.IsConfirmed,
 		"byHeader":        data.ByHeader,
+		"timestamp":       data.Timestamp,
 	}).Info("Collected new metrics event")
 
 	w.WriteHeader(http.StatusOK)
