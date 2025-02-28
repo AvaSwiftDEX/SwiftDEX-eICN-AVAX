@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"log"
 	"math/big"
 	"sync"
@@ -95,7 +96,7 @@ func NewContractSDK(ctx context.Context, url string, chainId *big.Int, address c
 		return nil
 	}
 	if logger.GetLogger() == nil {
-		logger.InitLogger()
+		logger.InitLogger("")
 	}
 	return &ContractSDK{
 		ctx:           ctx,
@@ -155,13 +156,13 @@ func (sdk *ContractSDK) CrossReceive(data *CrossData) {
 	if err != nil {
 		sdk.log.WithFields(logrus.Fields{
 			"method": "CrossReceive",
-		}).Fatal(err)
+		}).Error(err)
 		return
 	}
 	if cm.TargetChainId.Cmp(sdk.ChainId) != 0 {
 		sdk.log.WithFields(logrus.Fields{
 			"method": "CrossReceive",
-		}).Fatal("chain id not match")
+		}).Error("chain id not match")
 		return
 	}
 
@@ -170,7 +171,7 @@ func (sdk *ContractSDK) CrossReceive(data *CrossData) {
 	if err != nil {
 		sdk.log.WithFields(logrus.Fields{
 			"method": "CrossReceive",
-		}).Fatal(err)
+		}).Error(err)
 		return
 	}
 	sdk.log.WithFields(logrus.Fields{
@@ -190,7 +191,7 @@ func (sdk *ContractSDK) CrossReceive(data *CrossData) {
 	if err != nil {
 		sdk.log.WithFields(logrus.Fields{
 			"method": "CrossReceive",
-		}).Fatal(err)
+		}).Error(err)
 		return
 	}
 
@@ -199,7 +200,7 @@ func (sdk *ContractSDK) CrossReceive(data *CrossData) {
 	if err != nil {
 		sdk.log.WithFields(logrus.Fields{
 			"method": "CrossReceive",
-		}).Fatal(err)
+		}).Error(err)
 		return
 	}
 
@@ -215,7 +216,7 @@ func (sdk *ContractSDK) CrossReceive(data *CrossData) {
 	if err != nil {
 		sdk.log.WithFields(logrus.Fields{
 			"method": "CrossReceive",
-		}).Fatal(err)
+		}).Error(err)
 		return
 	}
 	sdk.log.WithFields(logrus.Fields{
@@ -238,13 +239,13 @@ func (sdk *ContractSDK) WaitCMHashData() {
 		if err != nil {
 			sdk.log.WithFields(logrus.Fields{
 				"method": "WaitCMHashData",
-			}).Fatal(err)
+			}).Error(err)
 			return
 		}
 		if receipt.Status == types.ReceiptStatusFailed {
 			sdk.log.WithFields(logrus.Fields{
 				"method": "WaitCMHashData",
-			}).Fatal("CrossReceive transaction failed: ", cmHash.Hash.Hex())
+			}).Error("CrossReceive transaction failed: ", cmHash.Hash.Hex())
 			return
 		}
 		// TODO: check whether the tx needs to be resend
@@ -268,7 +269,7 @@ func (sdk *ContractSDK) SyncHeader(data *HeaderData) {
 
 	sdk.log.WithFields(logrus.Fields{
 		"method": "SyncHeader",
-	}).Info("Received Header data: ", hex.EncodeToString(data.root[:]))
+	}).Info(fmt.Sprintf("Received Header#%d from Chain#%d ", data.number, data.chainId))
 
 	// get nonce
 	fromAddress := crypto.PubkeyToAddress(*sdk.PublicKey)
@@ -276,7 +277,7 @@ func (sdk *ContractSDK) SyncHeader(data *HeaderData) {
 	if err != nil {
 		sdk.log.WithFields(logrus.Fields{
 			"method": "SyncHeader",
-		}).Fatal(err)
+		}).Error(err)
 		return
 	}
 
@@ -285,7 +286,7 @@ func (sdk *ContractSDK) SyncHeader(data *HeaderData) {
 	if err != nil {
 		sdk.log.WithFields(logrus.Fields{
 			"method": "SyncHeader",
-		}).Fatal(err)
+		}).Error(err)
 		return
 	}
 
@@ -305,7 +306,7 @@ func (sdk *ContractSDK) SyncHeader(data *HeaderData) {
 	if err != nil {
 		sdk.log.WithFields(logrus.Fields{
 			"method": "SyncHeader",
-		}).Fatal(err)
+		}).Error(err)
 		return
 	}
 	sdk.log.WithFields(logrus.Fields{
@@ -328,16 +329,40 @@ func (sdk *ContractSDK) WaitHDRHashData() {
 		if err != nil {
 			sdk.log.WithFields(logrus.Fields{
 				"method": "WaitHDRHashData",
-			}).Fatal(err)
+			}).Error(err)
 			return
 		}
 		if receipt.Status == types.ReceiptStatusFailed {
 			sdk.log.WithFields(logrus.Fields{
 				"method": "WaitHDRHashData",
-			}).Fatal("SyncHeader transaction failed: ", hdrHash.Hash.Hex())
+			}).Error("SyncHeader transaction failed: ", hdrHash.Hash.Hex())
 			return
 		}
+		sdk.ParseRetryEvent(receipt)
 	case <-sdk.ctx.Done():
 		return
+	}
+}
+
+func (sdk *ContractSDK) ParseRetryEvent(receipt *types.Receipt) {
+	for _, log := range receipt.Logs {
+		eventRPC, err := sdk.InstanceCM.ParseRetryPrepareConfirmCM(*log)
+		if err == nil {
+			sdk.log.WithFields(logrus.Fields{
+				"method": "ParseRetryEvent",
+			}).Info("RetryPrepareConfirmCM event: ", hex.EncodeToString(eventRPC.CmHash[:]))
+		}
+		eventRPU, err := sdk.InstanceCM.ParseRetryPrepareUnconfirmCM(*log)
+		if err == nil {
+			sdk.log.WithFields(logrus.Fields{
+				"method": "ParseRetryEvent",
+			}).Info("RetryPrepareUnconfirmCM event: ", hex.EncodeToString(eventRPU.CmHash[:]))
+		}
+		eventRRC, err := sdk.InstanceCM.ParseRetryRollbackConfirmCM(*log)
+		if err == nil {
+			sdk.log.WithFields(logrus.Fields{
+				"method": "ParseRetryEvent",
+			}).Info("RetryRollbackConfirmCM event: ", hex.EncodeToString(eventRRC.CmHash[:]))
+		}
 	}
 }

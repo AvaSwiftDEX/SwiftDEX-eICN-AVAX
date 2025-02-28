@@ -5,7 +5,6 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"log"
 	"math/big"
 	"time"
 
@@ -43,7 +42,8 @@ func CrossSend(ctx context.Context, config *config.Config, args []CrossSendArg) 
 	// get client
 	client, err := ethclientext.Dial(config.Chain.HTTPURL)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("dial client, while error: ", err)
+		return err
 	}
 
 	// get instance
