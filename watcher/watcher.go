@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -44,6 +45,22 @@ type Watcher struct {
 	log               *logrus.Entry
 }
 
+var MetricsCMPhase = []string{
+	"MASTER_ISSUE",
+	"WORKER_PREPARE_UNCONFIRM",
+	"WORKER_PREPARE_CONFIRM",
+	"MASTER_RECEIVE_UNCONFIRM",
+	"MASTER_RECEIVE_CONFIRM",
+	"MASTER_COMMIT_UNCONFIRM",
+	"MASTER_COMMIT_CONFIRM",
+	"MASTER_ROLLBACK_UNCONFIRM",
+	"MASTER_ROLLBACK_CONFIRM",
+	"WORKER_COMMIT_UNCONFIRM",
+	"WORKER_COMMIT_CONFIRM",
+	"WORKER_ROLLBACK_UNCONFIRM",
+	"WORKER_ROLLBACK_CONFIRM",
+}
+
 func NewWatcher(
 	ctx context.Context,
 	httpUrl string,
@@ -57,7 +74,7 @@ func NewWatcher(
 		ctx = context.Background()
 	}
 	if logger.GetLogger() == nil {
-		logger.InitLogger()
+		logger.InitLogger("")
 	}
 
 	// 验证参数
@@ -166,7 +183,7 @@ func (wc *Watcher) MonitorBlock() {
 		case <-wc.ctx.Done():
 			return
 		case err := <-sub.Err():
-			wc.log.WithError(err).Error("subscription error")
+			wc.log.WithError(err).Error("subscription MonitorBlock error")
 			return
 		case header := <-headers:
 			wc.log.Info(fmt.Sprintf("find a new header: block height: %d, block hash: %s", header.Number.Uint64(), header.Hash().Hex()))
@@ -193,14 +210,19 @@ func (wc *Watcher) SendHeader() {
 			return
 		case header := <-wc.headerCh:
 			// 处理接收到的 header
+			root, err := wc.GetRoot(nil, header.Number)
+			if err != nil {
+				wc.log.WithError(err).Error("failed to get root")
+				continue
+			}
 			wc.log.WithFields(logrus.Fields{
 				"method":     "SendHeader",
 				"chainID":    wc.chainId,
 				"blockNum":   header.Number.Uint64(),
-				"headerRoot": header.Root.Hex(),
+				"headerRoot": root.Hex(),
 			}).Info("call target server's SyncHeader")
 
-			err := (*wc.transmitterClient).SyncHeader(wc.chainId, header.Number, header.Root)
+			err = (*wc.transmitterClient).SyncHeader(wc.chainId, header.Number, root)
 			if err != nil {
 				wc.log.WithError(err).Error("failed to send header to transmitter client")
 				continue
@@ -235,10 +257,10 @@ func (wc *Watcher) MonitorEvent() {
 		case <-wc.ctx.Done():
 			return
 		case err := <-sub.Err():
-			wc.log.WithError(err).Error("subscription error")
+			wc.log.WithError(err).Error("subscription MonitorEvent error")
 			return
 		case vLog := <-logs:
-			wc.log.Info(fmt.Sprintf("find a new log, cmHash: %s, status: %d", hex.EncodeToString(vLog.CmHash[:]), vLog.Status))
+			wc.log.Info(fmt.Sprintf("find a new log(SendCMHash), cmHash: %s, status: %d", hex.EncodeToString(vLog.CmHash[:]), vLog.Status))
 			cm, err := instance.GetCMByHash(nil, vLog.CmHash)
 			if err != nil {
 				wc.log.WithError(err).Error("failed to get CM by hash")
@@ -268,9 +290,16 @@ func (wc *Watcher) MonitorEvent() {
 	}
 }
 
+func (wc *Watcher) GetRoot(instance *SR2PC.SR2PC, height *big.Int) (common.Hash, error) {
+	// TODO: get root from instance
+	hash := sha256.Sum256([]byte(fmt.Sprintf("root of block height: %d\n", height)))
+	return hash, nil
+}
+
 func (wc *Watcher) GetProof(instance *SR2PC.SR2PC, cm *SR2PC.SR2PCCrossMessage) ([]byte, error) {
 	// TODO: get proof from instance
-	proof := []byte(fmt.Sprintf("root of block height: %d\n", cm.SourceHeight))
+	hash := sha256.Sum256([]byte(fmt.Sprintf("root of block height: %d\n", cm.SourceHeight)))
+	proof := hash[:]
 	return proof, nil
 }
 
@@ -295,29 +324,43 @@ func (wc *Watcher) CrossReceive() {
 
 func (wc *Watcher) MonitorMetrics() {
 	if wc.httpClient == nil {
-		wc.log.Fatal("http client is nil")
+		wc.log.Error("http client is nil")
+		return
 	}
 	if wc.wsClient == nil {
-		wc.log.Fatal("ws client is nil")
+		wc.log.Error("ws client is nil")
+		return
 	}
 	wc.log.Info("start to monitor metrics")
 	instance, err := SR2PC.NewSR2PC(wc.address, wc.wsClient)
 	if err != nil {
-		wc.log.Fatal("new SR2PC instance, while error: ", err)
+		wc.log.Error("new SR2PC instance, while error: ", err)
+		return
 	}
 	logs := make(chan *SR2PC.SR2PCMetrics)
 	sub, err := instance.WatchMetrics(nil, logs)
 	if err != nil {
-		wc.log.Fatal("watchMetrics, while error: ", err)
+		wc.log.Error("watchMetrics, while error: ", err)
+		return
 	}
 	for {
 		select {
 		case <-wc.ctx.Done():
 			return
 		case err := <-sub.Err():
-			wc.log.Fatal("subscribeMetrics, the sub error: ", err)
+			wc.log.Error("subscribeMetrics, the sub error: ", err)
+			return
 		case vLog := <-logs:
-			wc.log.Info(fmt.Sprintf("find a new log, metrics: %v", vLog))
+			wc.log.Info(
+				fmt.Sprintf(
+					"find a new log(Metrics), transactionHash: %s, phase: %s, height: %d, isConfirmed: %t, byHeader: %t",
+					hex.EncodeToString(vLog.TransactionHash[:]),
+					MetricsCMPhase[vLog.Phase],
+					vLog.Height,
+					vLog.IsConfirmed,
+					vLog.ByHeader,
+				),
+			)
 			wc.metricsCh <- &metrics.MetricsData{
 				TransactionHash: vLog.TransactionHash,
 				CmHash:          vLog.CmHash,
@@ -345,6 +388,51 @@ func (wc *Watcher) Metrics() {
 			if err := wc.collectorClient.CollectMetricsEvent(*data); err != nil {
 				wc.log.WithError(err).Error("Failed to send metrics event to collector")
 			}
+		}
+	}
+}
+
+func (wc *Watcher) MonitorError() {
+	if wc.httpClient == nil {
+		wc.log.Error("http client is nil")
+		return
+	}
+	if wc.wsClient == nil {
+		wc.log.Error("ws client is nil")
+		return
+	}
+	wc.log.Info("start to monitor errors")
+	instance, err := SR2PC.NewSR2PC(wc.address, wc.wsClient)
+	if err != nil {
+		wc.log.Error("new SR2PC instance, while error: ", err)
+		return
+	}
+	logs := make(chan *SR2PC.SR2PCError)
+	sub, err := instance.WatchError(nil, logs)
+	if err != nil {
+		wc.log.Error("watchError, while error: ", err)
+		return
+	}
+	logsWarning := make(chan *SR2PC.SR2PCWarning)
+	subWarning, err := instance.WatchWarning(nil, logsWarning)
+	if err != nil {
+		wc.log.Error("watchWarning, while error: ", err)
+		return
+	}
+	for {
+		select {
+		case <-wc.ctx.Done():
+			return
+		case err := <-sub.Err():
+			wc.log.Error("subscribeErrorEvent, the sub error: ", err)
+			return
+		case err := <-subWarning.Err():
+			wc.log.Error("subscribeWarningEvent, the sub error: ", err)
+			return
+		case vLog := <-logs:
+			wc.log.Warning(fmt.Sprintf("find a new log(Error), sourceChainId: %d, targetChainId: %d, phase: %d, reason: %s, others: %s", vLog.Cm.SourceChainId, vLog.Cm.TargetChainId, vLog.Cm.Phase, vLog.Reason, hex.EncodeToString(vLog.Others)))
+		case vLog := <-logsWarning:
+			wc.log.Warning(fmt.Sprintf("find a new log(Warning), reason: %s, others: %s", vLog.Reason, hex.EncodeToString(vLog.Others)))
 		}
 	}
 }
