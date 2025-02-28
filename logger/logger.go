@@ -10,7 +10,7 @@ import (
 var log *logrus.Logger
 
 // InitLogger 初始化全局日志实例
-func InitLogger() {
+func InitLogger(logFile string) {
 	log = logrus.New()
 
 	// 设置日志格式
@@ -19,8 +19,18 @@ func InitLogger() {
 		TimestampFormat: "2006-01-02 15:04:05",
 	})
 
-	// 设置输出
-	log.SetOutput(os.Stdout)
+	// 设置输
+	if logFile != "" {
+
+		file, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+		if err != nil {
+			log.Error("Failed to open log file:", err)
+		} else {
+			log.SetOutput(file)
+		}
+	} else {
+		log.SetOutput(os.Stdout)
+	}
 
 	// 设置日志级别
 	log.SetLevel(logrus.InfoLevel)
