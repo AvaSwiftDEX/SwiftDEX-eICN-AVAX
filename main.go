@@ -18,15 +18,16 @@ import (
 )
 
 func main() {
-	// 初始化日志
-	logger.InitLogger()
-	log := logger.GetLogger()
-	// log.SetReportCaller(true)
-
 	// 定义命令行参数
 	configPath := flag.String("config", "config.yaml", "path to config file")
+	logFile := flag.String("log", "", "path to log file")
 	debugLevel := flag.Bool("debug", true, "debug level")
 	flag.Parse()
+
+	// 初始化日志
+	logger.InitLogger(*logFile)
+	log := logger.GetLogger()
+	// log.SetReportCaller(true)
 
 	if *debugLevel {
 		log.SetLevel(logrus.DebugLevel)
@@ -65,6 +66,7 @@ func main() {
 	go func() {
 		defer wg.Done()
 		contractSDK.Run()
+		log.Info("ContractSDK has been shutdown")
 	}()
 
 	// create storage
@@ -77,13 +79,22 @@ func main() {
 	go func() {
 		defer wg.Done()
 		transmitterServer.StartServer()
+		log.Info("Transmitter has been shutdown")
 	}()
 
 	// create transmitter client
 	transmitterClient := client.NewTransmitterClient(storage)
 
 	// run watcher
-	watcher, err := watcher.NewWatcher(ctx, cfg.Chain.HTTPURL, cfg.Chain.WSURL, cfg.Chain.Address, cfg.Chain.ID, transmitterClient)
+	watcher, err := watcher.NewWatcher(
+		ctx,
+		cfg.Chain.HTTPURL,
+		cfg.Chain.WSURL,
+		cfg.Chain.Address,
+		cfg.Chain.ID,
+		transmitterClient,
+		cfg.Collector.URL,
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -91,16 +102,19 @@ func main() {
 	go func() {
 		defer wg.Done()
 		watcher.Run()
+		// log.Info("Watcher has been shutdown")
 	}()
 
 	// 等待中断信号
 	sig := <-sigChan
-	log.WithField("signal", sig.String()).Info("收到退出信号，开始优雅关闭...")
+	log.WithField("signal", sig.String()).Info("Receive EXIT signal, CLOSING...")
+
+	transmitterServer.Stop(ctx)
 
 	// 取消上下文
 	cancel()
 
 	// 等待所有goroutine完成
 	wg.Wait()
-	log.Info("所有服务已停止，程序退出")
+	log.Info("All services have been stopped, program exit")
 }
