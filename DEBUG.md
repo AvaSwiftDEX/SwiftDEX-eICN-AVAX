@@ -16,3 +16,15 @@ gcc --version
 7. log.Fatal 会直接退出程序, 所以不能随便使用
 8. *big.Int 比较大小时, 不能直接用==, 需要用Cmp方法
 9. geth v1.15.0 的 basefeePerGas 默认很高，交易如果设置了较低的gasPrice，就无法打包，所以需要设置较低的basefeePerGas，我在 geth 源代码中设置成了 10，baseFeePerGas会在geth运行的过程中根据区块大小不断变化，最低是7. 源代码的位置是 params/protocol_params.go，参数是InitialBaseFee
+10. 如果出现`address already in use`错误，使用：
+
+```bash
+lsof -i :8080 # 查看端口占用
+kill -9 $(lsof -t -i :8080) # 强制释放端口
+```
+
+11. 当测试用例异常中断时，可以用这个命令清理：
+
+```bash
+ps -ef | grep "go test" | awk '{print $2}' | xargs kill -9
+```

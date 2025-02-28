@@ -59,10 +59,28 @@ abigen --bin=output/SR2PC.bin --abi=output/SR2PC.abi --pkg=SR2PC --out=SR2PC/SR2
 geth --dev --dev.period 3 --keystore ./node/keystore --allow-insecure-unlock --http --http.api eth,web3,net,miner,txpool,admin --ws --ws.api eth,web3,net --http.port 8545 --ws.port 8546
 ```
 
+## start metrics collector
+
+```bash
+./metrics/run_metrics.sh
+```
+
 ## deploy contract
 
 ```bash
 ./scripts/deploy.sh --config=config.yaml
+```
+
+## start eICN
+
+```bash
+go run main.go --config=config.yaml --log=logs/1.log
+```
+
+## regist eICN
+
+```bash
+./scripts/regist_eICN.sh --config=config.yaml --target-config=target_config.yaml
 ```
 
 ## send cross-chain message
