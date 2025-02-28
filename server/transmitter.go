@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,12 +24,13 @@ type Transmitter struct {
 	wg          *sync.WaitGroup
 	contractSDK *sdk.ContractSDK
 	log         *logrus.Entry
+	server      *http.Server // 添加 server 字段
 }
 
 // NewTransmitter 创建一个新的 Transmitter 实例
 func NewTransmitter(host string, port uint16, wg *sync.WaitGroup, contractSDK *sdk.ContractSDK, storage map[string]string) *Transmitter {
 	if logger.GetLogger() == nil {
-		logger.InitLogger()
+		logger.InitLogger("")
 	}
 	return &Transmitter{
 		host:        host,
@@ -170,15 +172,27 @@ func (t *Transmitter) RegisterEICN(w http.ResponseWriter, r *http.Request) {
 
 // StartServer 启动 HTTP 服务器（协程方式）
 func (t *Transmitter) StartServer() {
-	defer t.wg.Done()
-	http.HandleFunc("/CrossReceive", t.CrossReceive)
-	http.HandleFunc("/SyncHeader", t.SyncHeader)
-	http.HandleFunc("/registerEICN", t.RegisterEICN)
-	t.log.Info(fmt.Sprintf("Server is running on port %d...", t.port))
-	if err := http.ListenAndServe(
-		fmt.Sprintf("%s:%d", t.host, t.port),
-		nil,
-	); err != nil {
-		t.log.Fatal(fmt.Sprintf("Failed to start server: %v", err))
+	mux := http.NewServeMux()
+	mux.HandleFunc("/CrossReceive", t.CrossReceive)
+	mux.HandleFunc("/SyncHeader", t.SyncHeader)
+	mux.HandleFunc("/registerEICN", t.RegisterEICN)
+
+	t.server = &http.Server{
+		Addr:    fmt.Sprintf("%s:%d", t.host, t.port),
+		Handler: mux,
 	}
+
+	t.log.Info(fmt.Sprintf("Server is running on port %d...", t.port))
+	if err := t.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		t.log.Error(fmt.Sprintf("Failed to start server: %v", err))
+	}
+}
+
+// Stop 优雅地停止服务器
+func (t *Transmitter) Stop(ctx context.Context) error {
+	if t.server != nil {
+		t.log.Info("Stopping server...")
+		return t.server.Shutdown(ctx)
+	}
+	return nil
 }
