@@ -21,13 +21,14 @@ type Config struct {
 	} `yaml:"http"`
 
 	Chain struct {
-		ID      *big.Int       `yaml:"id"`
-		HTTPURL string         `yaml:"http_url"`
-		WSURL   string         `yaml:"ws_url"`
-		KeyFile string         `yaml:"key_file"`
-		KeyHex  string         `yaml:"key_hex"`
-		UseFile bool           `yaml:"use_file"`
-		Address common.Address `yaml:"address,omitempty"`
+		ID                 *big.Int       `yaml:"id"`
+		HTTPURL            string         `yaml:"http_url"`
+		WSURL              string         `yaml:"ws_url"`
+		KeyFile            string         `yaml:"key_file"`
+		KeyHex             string         `yaml:"key_hex"`
+		UseFile            bool           `yaml:"use_file"`
+		Address            common.Address `yaml:"address,omitempty"`
+		ExpectedTrustDelta uint64         `yaml:"expected_trust_delta"`
 	} `yaml:"chain"`
 
 	Collector struct {
@@ -114,6 +115,7 @@ func createDefaultConfig(filename string) (*Config, error) {
 	config.Chain.KeyHex = "c45ba5d6de0e502aefd23c98b40a2c9018e2e0286dde4fdb542ded619cefc8bd"
 	config.Chain.UseFile = true
 	config.Chain.Address = common.HexToAddress("0x0000000000000000000000000000000000000000")
+	config.Chain.ExpectedTrustDelta = 1
 
 	config.Collector.URL = "http://127.0.0.1:8090"
 

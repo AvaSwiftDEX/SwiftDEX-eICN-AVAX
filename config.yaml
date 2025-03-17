@@ -10,5 +10,6 @@ chain:
     key_hex: c45ba5d6de0e502aefd23c98b40a2c9018e2e0286dde4fdb542ded619cefc8bd
     use_file: false
     address: 0xa7123063c4de62495497f3db1fe77d459d13583e
+    expected_trust_delta: 1
 collector:
     url: http://127.0.0.1:8090
