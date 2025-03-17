@@ -16,6 +16,7 @@ import (
 	ethclientext "github.com/kimroniny/SuperRunner-eICN-eth2/ethclientExt"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/logger"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/metrics/metrics"
+	"github.com/kimroniny/SuperRunner-eICN-eth2/sdk"
 	"github.com/sirupsen/logrus"
 )
 
@@ -39,6 +40,7 @@ type Watcher struct {
 	httpClient        *ethclientext.EthclientExt
 	wsClient          *ethclientext.EthclientExt
 	transmitterClient *client.ITransmitterClient
+	contractSDK       *sdk.ContractSDK
 	headerCh          chan *SyncHeaderData
 	crossReceiveCh    chan *CrossReceiveData
 	metricsCh         chan *metrics.MetricsData
@@ -69,6 +71,7 @@ func NewWatcher(
 	address common.Address,
 	chainId *big.Int,
 	transmitter client.ITransmitterClient,
+	contractSDK *sdk.ContractSDK,
 	collectorURL string,
 ) (*Watcher, error) {
 	if ctx == nil {
@@ -99,6 +102,7 @@ func NewWatcher(
 		address:           address,
 		chainId:           chainId,
 		transmitterClient: &transmitter,
+		contractSDK:       contractSDK,
 		httpClient:        nil,
 		wsClient:          nil,
 		headerCh:          make(chan *SyncHeaderData, 1024),
@@ -159,6 +163,7 @@ func (wc *Watcher) Run() {
 	go wc.MonitorEvent()
 	go wc.CrossReceive()
 	go wc.MonitorMetrics()
+	go wc.MonitorError()
 }
 
 func (wc *Watcher) MonitorBlock() {
@@ -435,6 +440,41 @@ func (wc *Watcher) MonitorError() {
 			wc.log.Warning(fmt.Sprintf("find a new log(Error), sourceChainId: %d, targetChainId: %d, phase: %d, reason: %s, others: %s", vLog.Cm.SourceChainId, vLog.Cm.TargetChainId, vLog.Cm.Phase, vLog.Reason, hex.EncodeToString(vLog.Others)))
 		case vLog := <-logsWarning:
 			wc.log.Warning(fmt.Sprintf("find a new log(Warning), reason: %s, others: %s", vLog.Reason, hex.EncodeToString(vLog.Others)))
+		}
+	}
+}
+
+func (wc *Watcher) MonitorSyncHeader() {
+	if wc.httpClient == nil {
+		wc.log.Error("http client is nil")
+		return
+	}
+	if wc.wsClient == nil {
+		wc.log.Error("ws client is nil")
+		return
+	}
+	wc.log.Info("start to monitor sync header")
+	instance, err := SR2PC.NewSR2PC(wc.address, wc.wsClient)
+	if err != nil {
+		wc.log.Error("new SR2PC instance, while error: ", err)
+		return
+	}
+	logs := make(chan *SR2PC.SR2PCSyncHeader)
+	sub, err := instance.WatchSyncHeader(nil, logs)
+	if err != nil {
+		wc.log.Error("watchSyncHeader, while error: ", err)
+		return
+	}
+	for {
+		select {
+		case <-wc.ctx.Done():
+			return
+		case err := <-sub.Err():
+			wc.log.Error("subscribeSyncHeader, the sub error: ", err)
+			return
+		case vLog := <-logs:
+			wc.log.Info(fmt.Sprintf("find a new log(SyncHeader), chainId: %d, height: %d, root: %s", vLog.ChainId, vLog.Height, hex.EncodeToString(vLog.Root[:])))
+			wc.contractSDK.FindSyncHeader(vLog.ChainId, vLog.Height)
 		}
 	}
 }

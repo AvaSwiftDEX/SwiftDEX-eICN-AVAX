@@ -44,25 +44,43 @@ type HDRHashData struct {
 	HdrData *HeaderData
 }
 
+type ClientState struct {
+	MsgHeight     *big.Int
+	TrustedHeight *big.Int
+}
+
+type EventSyncHeader struct {
+	chainId *big.Int
+	height  *big.Int
+}
+
+type CacheData struct {
+	CrossMessage *SR2PC.SR2PCCrossMessage
+	Proof        *[]byte
+}
+
 // ContractSDK 结构体
 type ContractSDK struct {
-	ctx           context.Context
-	URL           string
-	HttpClient    *ethclientext.EthclientExt
-	ChainNativeId *big.Int
-	PrivateKey    *ecdsa.PrivateKey
-	PublicKey     *ecdsa.PublicKey
-	ChainId       *big.Int
-	Address       common.Address
-	InstanceCM    *SR2PC.SR2PC
-	InstanceHDR   *SR2PC.SR2PC
-	Serv2SDK_CM   chan *CrossData   // 容量为1024的通道
-	Serv2SDK_HDR  chan *HeaderData  // 容量为1025的通道
-	WaitCMHashCh  chan *CMHashData  // 容量为1024的通道
-	WaitHDRHashCh chan *HDRHashData // 容量为1024的通道
-	Stop          chan struct{}     // 停止信号通道
-	mutex         sync.Mutex
-	log           *logrus.Entry
+	ctx               context.Context
+	URL               string
+	HttpClient        *ethclientext.EthclientExt
+	ChainNativeId     *big.Int
+	ClientStates      map[string]*ClientState // key: chainID, value: height
+	msgCache          map[string]map[string]*Queue
+	PrivateKey        *ecdsa.PrivateKey
+	PublicKey         *ecdsa.PublicKey
+	ChainId           *big.Int
+	Address           common.Address
+	InstanceCM        *SR2PC.SR2PC
+	InstanceHDR       *SR2PC.SR2PC
+	Serv2SDK_CM       chan *CrossData       // 容量为1024的通道
+	Serv2SDK_HDR      chan *HeaderData      // 容量为1024的通道
+	WaitCMHashCh      chan *CMHashData      // 容量为1024的通道
+	WaitHDRHashCh     chan *HDRHashData     // 容量为1024的通道
+	WatchSyncHeaderCh chan *EventSyncHeader // 容量为1024的通道
+	Stop              chan struct{}         // 停止信号通道
+	mutex             sync.Mutex
+	log               *logrus.Entry
 }
 
 // NewContractSDK 创建一个新的 ContractSDK 实例
@@ -95,27 +113,29 @@ func NewContractSDK(ctx context.Context, url string, chainId *big.Int, address c
 		log.Fatal(err)
 		return nil
 	}
+	// init logger
 	if logger.GetLogger() == nil {
 		logger.InitLogger("")
 	}
 	return &ContractSDK{
-		ctx:           ctx,
-		URL:           url,
-		Address:       address,
-		ChainId:       chainId,
-		ChainNativeId: chainNativeID,
-		PrivateKey:    privateKey,
-		PublicKey:     publicKeyECDSA,
-		HttpClient:    httpclient,
-		InstanceCM:    instanceCM,
-		InstanceHDR:   instanceHDR,
-		Serv2SDK_CM:   make(chan *CrossData, 1024),
-		Serv2SDK_HDR:  make(chan *HeaderData, 1024),
-		WaitCMHashCh:  make(chan *CMHashData, 1024),
-		WaitHDRHashCh: make(chan *HDRHashData, 1024),
-		Stop:          make(chan struct{}),
-		mutex:         sync.Mutex{},
-		log:           logger.NewComponent("ContractSDK"),
+		ctx:               ctx,
+		URL:               url,
+		Address:           address,
+		ChainId:           chainId,
+		ChainNativeId:     chainNativeID,
+		PrivateKey:        privateKey,
+		PublicKey:         publicKeyECDSA,
+		HttpClient:        httpclient,
+		InstanceCM:        instanceCM,
+		InstanceHDR:       instanceHDR,
+		Serv2SDK_CM:       make(chan *CrossData, 1024),
+		Serv2SDK_HDR:      make(chan *HeaderData, 1024),
+		WaitCMHashCh:      make(chan *CMHashData, 1024),
+		WaitHDRHashCh:     make(chan *HDRHashData, 1024),
+		WatchSyncHeaderCh: make(chan *EventSyncHeader, 1024),
+		Stop:              make(chan struct{}),
+		mutex:             sync.Mutex{},
+		log:               logger.NewComponent("ContractSDK"),
 	}
 }
 
@@ -130,7 +150,7 @@ func (sdk *ContractSDK) ListenDataFromServer() {
 	for {
 		select {
 		case data := <-sdk.Serv2SDK_CM:
-			sdk.CrossReceive(data)
+			sdk.DealCounterpartCM(data)
 		case data := <-sdk.Serv2SDK_HDR:
 			sdk.SyncHeader(data)
 		case <-sdk.ctx.Done():
@@ -140,25 +160,114 @@ func (sdk *ContractSDK) ListenDataFromServer() {
 	}
 }
 
+func (sdk *ContractSDK) WatchSyncHeaderEvent() {
+	for {
+		select {
+		case <-sdk.ctx.Done():
+			return
+		case syncHeader := <-sdk.WatchSyncHeaderCh:
+			sdk.UpdateTrustedHeight(syncHeader.chainId, syncHeader.height)
+		}
+	}
+}
+
+func (sdk *ContractSDK) FindSyncHeader(chainId *big.Int, height *big.Int) {
+	sdk.WatchSyncHeaderCh <- &EventSyncHeader{chainId: chainId, height: height}
+}
+
+func (sdk *ContractSDK) UpdateTrustedHeight(chainId *big.Int, height *big.Int) {
+	sdk.mutex.Lock()
+	defer sdk.mutex.Unlock()
+	chainIdStr := chainId.String()
+	if _, ok := sdk.ClientStates[chainIdStr]; !ok {
+		sdk.ClientStates[chainIdStr] = &ClientState{
+			MsgHeight:     big.NewInt(0),
+			TrustedHeight: height,
+		}
+	} else {
+		if height.Cmp(sdk.ClientStates[chainIdStr].TrustedHeight) > 0 {
+			sdk.ClientStates[chainIdStr].TrustedHeight = height
+			sdk.log.WithFields(logrus.Fields{
+				"method": "UpdateTrustedHeight",
+			}).Info(fmt.Sprintf("Update TrustedHeight to %d for Chain#%d", height, chainId))
+			sdk.NotifyCM(chainId, height)
+		}
+	}
+}
+
+func (sdk *ContractSDK) NotifyCM(chainId *big.Int, height *big.Int) {
+	chainIdStr := chainId.String()
+	heightStr := height.String()
+	q := sdk.msgCache[chainIdStr][heightStr]
+	for {
+		item, ok := q.Dequeue()
+		if !ok {
+			break
+		}
+		cmData := item.(*CacheData)
+		sdk.CrossReceive(cmData.CrossMessage, cmData.Proof)
+	}
+}
+
+func (sdk *ContractSDK) ShouldReceiveCM(cm *SR2PC.SR2PCCrossMessage) bool {
+	chainIdStr := cm.SourceChainId.String()
+	height := cm.ExpectedHeight
+	clientState, ok := sdk.ClientStates[chainIdStr]
+	if !ok || height.Cmp(clientState.TrustedHeight) > 0 {
+		return false
+	}
+	return true
+}
+
+func (sdk *ContractSDK) CacheCM(cm *SR2PC.SR2PCCrossMessage, proof *[]byte) {
+	chainIdStr := cm.SourceChainId.String()
+	height := cm.ExpectedHeight
+	sdk.msgCache[chainIdStr][height.String()].Enqueue(
+		&CacheData{
+			CrossMessage: cm,
+			Proof:        proof,
+		},
+	)
+}
+
+func (sdk *ContractSDK) DealCounterpartCM(data *CrossData) {
+	cm := SR2PC.SR2PCCrossMessage{}
+	err := json.Unmarshal(data.Cm, &cm)
+	if err != nil {
+		return
+	}
+	// store the CM to cache
+	var proof []byte
+	err = json.Unmarshal(data.Proof, &proof)
+	if err != nil {
+		return
+	}
+	if !sdk.ShouldReceiveCM(&cm) {
+		sdk.log.WithFields(logrus.Fields{
+			"method": "DealCounterpartCM",
+		}).Info(
+			fmt.Sprintf("CM(chainId: %d, height: %d, expectedHeight: %d, nonce: %d)'s header has not been trusted yet",
+				cm.SourceChainId,
+				cm.SourceHeight,
+				cm.ExpectedHeight,
+				cm.Nonce,
+			),
+		)
+		sdk.CacheCM(&cm, &proof)
+	}
+	sdk.CrossReceive(&cm, &proof)
+}
+
 // TransmitterCrossReceive 用于 server.Transmitter 调用，将数据发送到 ContractSDK
 func (sdk *ContractSDK) TransmitterCrossReceive(cm []byte, proof []byte) {
 	sdk.Serv2SDK_CM <- &CrossData{Cm: cm, Proof: proof}
 }
 
 // CrossReceive handles the data received from the channel (specific logic to be determined later)
-func (sdk *ContractSDK) CrossReceive(data *CrossData) {
+func (sdk *ContractSDK) CrossReceive(cm *SR2PC.SR2PCCrossMessage, proof *[]byte) {
 	sdk.mutex.Lock()
 	defer sdk.mutex.Unlock()
 
-	// parse CM 和 proof
-	var cm SR2PC.SR2PCCrossMessage
-	err := json.Unmarshal(data.Cm, &cm)
-	if err != nil {
-		sdk.log.WithFields(logrus.Fields{
-			"method": "CrossReceive",
-		}).Error(err)
-		return
-	}
 	if cm.TargetChainId.Cmp(sdk.ChainId) != 0 {
 		sdk.log.WithFields(logrus.Fields{
 			"method": "CrossReceive",
@@ -166,14 +275,6 @@ func (sdk *ContractSDK) CrossReceive(data *CrossData) {
 		return
 	}
 
-	var proof []byte
-	err = json.Unmarshal(data.Proof, &proof)
-	if err != nil {
-		sdk.log.WithFields(logrus.Fields{
-			"method": "CrossReceive",
-		}).Error(err)
-		return
-	}
 	sdk.log.WithFields(logrus.Fields{
 		"method": "CrossReceive",
 	}).Info(
@@ -212,7 +313,7 @@ func (sdk *ContractSDK) CrossReceive(data *CrossData) {
 	auth.GasPrice = big.NewInt(int64(gasPrice))
 
 	// send transaction
-	tx, err := sdk.InstanceCM.CrossReceive(auth, cm, proof)
+	tx, err := sdk.InstanceCM.CrossReceive(auth, *cm, *proof)
 	if err != nil {
 		sdk.log.WithFields(logrus.Fields{
 			"method": "CrossReceive",
@@ -225,7 +326,7 @@ func (sdk *ContractSDK) CrossReceive(data *CrossData) {
 
 	// send hash to channel
 	hash := tx.Hash()
-	sdk.WaitCMHashCh <- &CMHashData{Hash: hash, CrossData: data}
+	sdk.WaitCMHashCh <- &CMHashData{Hash: hash, CrossData: nil}
 }
 
 func (sdk *ContractSDK) WaitCMHashData() {
