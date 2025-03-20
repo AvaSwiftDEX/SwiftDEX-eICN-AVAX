@@ -89,7 +89,7 @@ func (c *TransmitterClient) CrossReceive(chainId *big.Int, data1, data2 []byte) 
 	c.log.WithFields(logrus.Fields{
 		"chainID": chainId,
 		"url":     targetServerURL,
-	}).Info("call the counterparty eICN server's CrossReceive")
+	}).Debug("call the counterparty eICN server's CrossReceive")
 
 	resp, err := http.Post(targetServerURL+"/CrossReceive", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -119,7 +119,7 @@ func (c *TransmitterClient) RegisterEICN(url string, chainID *big.Int, targetSer
 	c.log.WithFields(logrus.Fields{
 		"url":     url,
 		"chainID": chainID,
-	}).Info("注册 EICN")
+	}).Info("regist EICN")
 
 	reqBody := RegisterRequest{
 		URL:     url,
@@ -175,7 +175,7 @@ func (c *TransmitterClient) SyncHeader(chainID *big.Int, number *big.Int, root c
 			defer wg.Done()
 			err := c.syncHeaderToSingleChain(url, jsonData)
 			if err != nil {
-				c.log.Warn(fmt.Sprintf("sync header to single chain(#%s), while error: %v", targetChainID, err))
+				c.log.Warn(fmt.Sprintf("transmit header to chain(#%s)'s eICN server, while error: %v", targetChainID, err))
 				return
 			}
 			c.log.WithFields(logrus.Fields{
@@ -183,7 +183,7 @@ func (c *TransmitterClient) SyncHeader(chainID *big.Int, number *big.Int, root c
 				"chanID":     chainID,
 				"blockNum":   number,
 				"headerRoot": root.Hex(),
-			}).Info(fmt.Sprintf("sync header to single chain(#%s) success", targetChainID))
+			}).Debug(fmt.Sprintf("transmit header to chain(#%s)'s eICN server success", targetChainID))
 		}(targetChainID, url)
 	}
 	wg.Wait()
