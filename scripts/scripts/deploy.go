@@ -58,7 +58,7 @@ func Deploy(ctx context.Context, config *config.Config) (common.Address, error) 
 	auth.GasPrice = big.NewInt(int64(gasPrice))
 
 	_chainId := config.Chain.ID
-	address, tx, instance, err := SR2PC.DeploySR2PC(auth, client, _chainId)
+	address, tx, instance, err := SR2PC.DeploySR2PC(auth, client, _chainId, big.NewInt(int64(config.Chain.ExpectedTrustDelta)))
 	if err != nil {
 		return common.Address{}, err
 	}
