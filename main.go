@@ -93,6 +93,7 @@ func main() {
 		cfg.Chain.Address,
 		cfg.Chain.ID,
 		transmitterClient,
+		contractSDK, // send data to self chain
 		cfg.Collector.URL,
 	)
 	if err != nil {
