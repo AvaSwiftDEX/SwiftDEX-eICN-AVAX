@@ -57,7 +57,7 @@ func TestNewWatcher(t *testing.T) {
 	collectorURL := "http://localhost:8080"
 
 	// 测试创建 Watcher，不使用真实的 URL
-	watcher, err := NewWatcher(ctx, "", "", address, chainId, transmitterClient, collectorURL)
+	watcher, err := NewWatcher(ctx, "", "", address, chainId, transmitterClient, nil, collectorURL)
 
 	// 验证结果
 	assert.NoError(t, err)
@@ -102,7 +102,7 @@ func TestWatcher_SendHeader(t *testing.T) {
 	mockClient := new(MockTransmitterClient)
 	var transmitterClient client.ITransmitterClient = mockClient
 	collectorURL := "http://localhost:8080"
-	watcher, _ := NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), transmitterClient, collectorURL)
+	watcher, _ := NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), transmitterClient, nil, collectorURL)
 
 	// 设置 mock 期望
 	mockClient.On("SyncHeader", mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -154,7 +154,7 @@ func TestWatcher_CrossReceive(t *testing.T) {
 	mockClient := new(MockTransmitterClient)
 	var transmitterClient client.ITransmitterClient = mockClient
 	collectorURL := "http://localhost:8080"
-	watcher, _ := NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), transmitterClient, collectorURL)
+	watcher, _ := NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), transmitterClient, nil, collectorURL)
 
 	// 设置 mock 期望
 	mockClient.On("CrossReceive", mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -208,7 +208,7 @@ func TestWatcher_Metrics(t *testing.T) {
 	mockClient := new(MockTransmitterClient)
 	var transmitterClient client.ITransmitterClient = mockClient
 	collectorURL := "http://localhost:8084"
-	watcher, _ := NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), transmitterClient, collectorURL)
+	watcher, _ := NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), transmitterClient, nil, collectorURL)
 
 	// 启动 Metrics 处理
 	go watcher.Metrics()
@@ -269,7 +269,7 @@ func TestWatcher_ContextCancellation(t *testing.T) {
 	mockClient := new(MockTransmitterClient)
 	var transmitterClient client.ITransmitterClient = mockClient
 	collectorURL := "http://localhost:8080"
-	watcher, _ := NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), transmitterClient, collectorURL)
+	watcher, _ := NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), transmitterClient, nil, collectorURL)
 
 	// 启动所有监听器
 	done := make(chan bool)
@@ -332,7 +332,7 @@ func TestWatcher_SendHeader_Error(t *testing.T) {
 	mockClient := new(MockTransmitterClient)
 	var transmitterClient client.ITransmitterClient = mockClient
 	collectorURL := "http://localhost:8080"
-	watcher, _ := NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), transmitterClient, collectorURL)
+	watcher, _ := NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), transmitterClient, nil, collectorURL)
 
 	// 设置 mock 期望返回错误
 	expectedErr := fmt.Errorf("sync header error")
@@ -391,7 +391,7 @@ func TestWatcher_CrossReceive_Error(t *testing.T) {
 	mockClient := new(MockTransmitterClient)
 	var transmitterClient client.ITransmitterClient = mockClient
 	collectorURL := "http://localhost:8080"
-	watcher, _ := NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), transmitterClient, collectorURL)
+	watcher, _ := NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), transmitterClient, nil, collectorURL)
 
 	// 设置 mock 期望返回错误
 	expectedErr := fmt.Errorf("cross receive error")
@@ -452,12 +452,12 @@ func TestWatcher_InvalidChainId(t *testing.T) {
 	collectorURL := "http://localhost:8080"
 
 	// 测试使用无效的 chainId
-	watcher, err := NewWatcher(ctx, "", "", common.Address{}, nil, transmitterClient, collectorURL)
+	watcher, err := NewWatcher(ctx, "", "", common.Address{}, nil, transmitterClient, nil, collectorURL)
 	assert.Error(t, err)
 	assert.Nil(t, watcher)
 
 	// 测试使用负数 chainId
-	watcher, err = NewWatcher(ctx, "", "", common.Address{}, big.NewInt(-1), transmitterClient, collectorURL)
+	watcher, err = NewWatcher(ctx, "", "", common.Address{}, big.NewInt(-1), transmitterClient, nil, collectorURL)
 	assert.Error(t, err)
 	assert.Nil(t, watcher)
 
@@ -481,12 +481,12 @@ func TestWatcher_InvalidCollectorURL(t *testing.T) {
 	var transmitterClient client.ITransmitterClient = mockClient
 
 	// 测试使用无效的 collector URL
-	watcher, err := NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), transmitterClient, "invalid-url")
+	watcher, err := NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), transmitterClient, nil, "invalid-url")
 	assert.Error(t, err)
 	assert.Nil(t, watcher)
 
 	// 测试使用空的 collector URL
-	watcher, err = NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), transmitterClient, "")
+	watcher, err = NewWatcher(ctx, "", "", common.Address{}, big.NewInt(1), transmitterClient, nil, "")
 	assert.Error(t, err)
 	assert.Nil(t, watcher)
 }
