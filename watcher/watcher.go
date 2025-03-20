@@ -164,6 +164,7 @@ func (wc *Watcher) Run() {
 	go wc.CrossReceive()
 	go wc.MonitorMetrics()
 	go wc.MonitorError()
+	go wc.MonitorSyncHeader()
 }
 
 func (wc *Watcher) MonitorBlock() {
@@ -215,7 +216,8 @@ func (wc *Watcher) SendHeader() {
 		case <-wc.ctx.Done():
 			return
 		case header := <-wc.headerCh:
-			// 处理接收到的 header
+			// TODO retrieve root according to the realistic blockchain
+			// now it is a mock function
 			root, err := wc.GetRoot(nil, header.Number)
 			if err != nil {
 				wc.log.WithError(err).Error("failed to get root")
@@ -226,7 +228,7 @@ func (wc *Watcher) SendHeader() {
 				"chainID":    wc.chainId,
 				"blockNum":   header.Number.Uint64(),
 				"headerRoot": root.Hex(),
-			}).Info("call target server's SyncHeader")
+			}).Debug("call target server's SyncHeader")
 
 			err = (*wc.transmitterClient).SyncHeader(wc.chainId, header.Number, root)
 			if err != nil {
@@ -304,7 +306,7 @@ func (wc *Watcher) GetRoot(instance *SR2PC.SR2PC, height *big.Int) (common.Hash,
 
 func (wc *Watcher) GetProof(instance *SR2PC.SR2PC, cm *SR2PC.SR2PCCrossMessage) ([]byte, error) {
 	// TODO: get proof from instance
-	hash := sha256.Sum256([]byte(fmt.Sprintf("root of block height: %d\n", cm.SourceHeight)))
+	hash := sha256.Sum256([]byte(fmt.Sprintf("root of block height: %d\n", cm.ExpectedHeight)))
 	proof := hash[:]
 	return proof, nil
 }
@@ -318,7 +320,7 @@ func (wc *Watcher) CrossReceive() {
 			wc.log.WithFields(logrus.Fields{
 				"method":  "CrossReceive",
 				"chainID": data.chainId,
-			}).Info("call transmitter client's CrossReceive")
+			}).Debug("call transmitter client's CrossReceive")
 			err := (*wc.transmitterClient).CrossReceive(data.chainId, data.Data1, data.Data2)
 			if err != nil {
 				wc.log.WithError(err).Error("failed to send crossReceive to transmitter client")
@@ -390,7 +392,7 @@ func (wc *Watcher) Metrics() {
 			wc.log.WithFields(logrus.Fields{
 				"method":          "Metrics",
 				"transactionHash": hex.EncodeToString(data.TransactionHash[:]),
-			}).Info("Sending metrics event to collector")
+			}).Debug("Sending metrics event to collector")
 
 			if err := wc.collectorClient.CollectMetricsEvent(*data); err != nil {
 				wc.log.WithError(err).Error("Failed to send metrics event to collector")
