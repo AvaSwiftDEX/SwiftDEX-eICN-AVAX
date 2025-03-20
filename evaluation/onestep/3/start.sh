@@ -10,10 +10,13 @@ check_session() {
     return 0
 }
 
+# Get debug parameter with default value false
+DEBUG=${1:-false}
+
 echo ">>> >>> >>> start geth"
-screen -L -S session_geth_1 -dm ../SuperRunner-go-ethereum/build/bin/geth --dev --dev.period 3 --keystore ./node/keystore --allow-insecure-unlock --http --http.api eth,web3,net,miner,txpool,admin --ws --ws.api eth,web3,net --http.port 8545 --ws.port 8546
-screen -L -S session_geth_2 -dm ../SuperRunner-go-ethereum/build/bin/geth --dev --dev.period 3 --keystore ./node/keystore --allow-insecure-unlock --http --http.api eth,web3,net,miner,txpool,admin --ws --ws.api eth,web3,net --http.port 8555 --ws.port 8556
-screen -L -S session_geth_3 -dm ../SuperRunner-go-ethereum/build/bin/geth --dev --dev.period 3 --keystore ./node/keystore --allow-insecure-unlock --http --http.api eth,web3,net,miner,txpool,admin --ws --ws.api eth,web3,net --http.port 8565 --ws.port 8566
+screen -S session_geth_1 -dm ../SuperRunner-go-ethereum/build/bin/geth --dev --dev.period 3 --keystore ./node/keystore --allow-insecure-unlock --http --http.api eth,web3,net,miner,txpool,admin --ws --ws.api eth,web3,net --http.port 8545 --ws.port 8546
+screen -S session_geth_2 -dm ../SuperRunner-go-ethereum/build/bin/geth --dev --dev.period 3 --keystore ./node/keystore --allow-insecure-unlock --http --http.api eth,web3,net,miner,txpool,admin --ws --ws.api eth,web3,net --http.port 8555 --ws.port 8556
+screen -S session_geth_3 -dm ../SuperRunner-go-ethereum/build/bin/geth --dev --dev.period 3 --keystore ./node/keystore --allow-insecure-unlock --http --http.api eth,web3,net,miner,txpool,admin --ws --ws.api eth,web3,net --http.port 8565 --ws.port 8566
 sleep 2s
 check_session "session_geth_1"
 check_session "session_geth_2"
@@ -28,9 +31,9 @@ echo ">>> >>> >>> start deploy"
 ./scripts/deploy.sh --config=evaluation/configs/config3.yaml
 
 echo ">>> >>> >>> start eICN"
-screen -L -S session_eICN_1 -dm go run main.go --config=evaluation/configs/config1.yaml --log=logs/1.log
-screen -L -S session_eICN_2 -dm go run main.go --config=evaluation/configs/config2.yaml --log=logs/2.log
-screen -L -S session_eICN_3 -dm go run main.go --config=evaluation/configs/config3.yaml --log=logs/3.log
+screen -L -S session_eICN_1 -dm go run main.go --config=evaluation/configs/config1.yaml --log=logs/1.log --debug=$DEBUG
+screen -L -S session_eICN_2 -dm go run main.go --config=evaluation/configs/config2.yaml --log=logs/2.log --debug=$DEBUG
+screen -L -S session_eICN_3 -dm go run main.go --config=evaluation/configs/config3.yaml --log=logs/3.log --debug=$DEBUG
 sleep 3s
 check_session "session_eICN_1"
 check_session "session_eICN_2"

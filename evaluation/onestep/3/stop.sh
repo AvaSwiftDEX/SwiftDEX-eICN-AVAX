@@ -17,3 +17,5 @@ stop_session "session_geth_3"
 stop_session "session_eICN_1"
 stop_session "session_eICN_2"
 stop_session "session_eICN_3"
+
+stop_session "session_metrics"
