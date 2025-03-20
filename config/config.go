@@ -34,6 +34,10 @@ type Config struct {
 	Collector struct {
 		URL string `yaml:"url"`
 	} `yaml:"collector"`
+
+	EICN struct {
+		Async bool `yaml:"async"`
+	} `yaml:"eICN"`
 }
 
 func readPrivateKeyFromFile(keyFile string) (*ecdsa.PrivateKey, error) {
@@ -118,7 +122,7 @@ func createDefaultConfig(filename string) (*Config, error) {
 	config.Chain.ExpectedTrustDelta = 1
 
 	config.Collector.URL = "http://127.0.0.1:8090"
-
+	config.EICN.Async = false
 	// 保存默认配置到文件
 	if err := config.SaveConfig(filename); err != nil {
 		return nil, err

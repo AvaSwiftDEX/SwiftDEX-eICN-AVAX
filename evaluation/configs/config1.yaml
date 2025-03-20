@@ -13,3 +13,5 @@ chain:
     expected_trust_delta: 1
 collector:
     url: http://127.0.0.1:8090
+eICN:
+    async: true

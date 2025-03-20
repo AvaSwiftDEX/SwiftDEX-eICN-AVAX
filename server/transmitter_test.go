@@ -27,7 +27,7 @@ func setupTestSDK(t *testing.T) *sdk.ContractSDK {
 	chainId := big.NewInt(1)                                // 测试用chainId
 	address := "0x742d35Cc6634C0532925a3b844Bc454e4438f44e" // 测试用合约地址
 
-	return sdk.NewContractSDK(ctx, url, chainId, common.HexToAddress(address), privateKey)
+	return sdk.NewContractSDK(ctx, url, chainId, common.HexToAddress(address), privateKey, false)
 }
 
 func TestCrossReceive(t *testing.T) {

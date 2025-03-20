@@ -23,7 +23,7 @@ func setupTestSDK(t *testing.T) *ContractSDK {
 	chainId := big.NewInt(1)                                                     // 测试用chainId
 	address := common.HexToAddress("0x742d35Cc6634C0532925a3b844Bc454e4438f44e") // 测试用合约地址
 
-	return NewContractSDK(ctx, url, chainId, address, privateKey)
+	return NewContractSDK(ctx, url, chainId, address, privateKey, false)
 }
 
 func TestContractSDK_Run(t *testing.T) {

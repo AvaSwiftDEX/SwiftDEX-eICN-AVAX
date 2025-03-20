@@ -81,10 +81,11 @@ type ContractSDK struct {
 	Stop              chan struct{}         // 停止信号通道
 	mutex             sync.Mutex
 	log               *logrus.Entry
+	eICNAsync         bool
 }
 
 // NewContractSDK 创建一个新的 ContractSDK 实例
-func NewContractSDK(ctx context.Context, url string, chainId *big.Int, address common.Address, privateKey *ecdsa.PrivateKey) *ContractSDK {
+func NewContractSDK(ctx context.Context, url string, chainId *big.Int, address common.Address, privateKey *ecdsa.PrivateKey, eICNAsync bool) *ContractSDK {
 	httpclient, err := ethclientext.Dial(url)
 	if err != nil {
 		panic(err)
@@ -138,6 +139,7 @@ func NewContractSDK(ctx context.Context, url string, chainId *big.Int, address c
 		Stop:              make(chan struct{}),
 		mutex:             sync.Mutex{},
 		log:               logger.NewComponent("ContractSDK"),
+		eICNAsync:         eICNAsync,
 	}
 }
 
@@ -256,7 +258,7 @@ func (sdk *ContractSDK) DealCounterpartCM(data *CrossData) {
 	if err != nil {
 		return
 	}
-	if !sdk.ShouldReceiveCM(&cm) {
+	if !sdk.eICNAsync && !sdk.ShouldReceiveCM(&cm) {
 		sdk.log.WithFields(logrus.Fields{
 			"method": "DealCounterpartCM",
 		}).Info(
