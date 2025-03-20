@@ -66,7 +66,7 @@ type ContractSDK struct {
 	HttpClient        *ethclientext.EthclientExt
 	ChainNativeId     *big.Int
 	ClientStates      map[string]*ClientState // key: chainID, value: height
-	msgCache          map[string]map[string]*Queue
+	MsgCache          map[string]*Queue       // key: chainID + height, value: queue
 	PrivateKey        *ecdsa.PrivateKey
 	PublicKey         *ecdsa.PublicKey
 	ChainId           *big.Int
@@ -123,6 +123,8 @@ func NewContractSDK(ctx context.Context, url string, chainId *big.Int, address c
 		Address:           address,
 		ChainId:           chainId,
 		ChainNativeId:     chainNativeID,
+		ClientStates:      make(map[string]*ClientState),
+		MsgCache:          make(map[string]*Queue),
 		PrivateKey:        privateKey,
 		PublicKey:         publicKeyECDSA,
 		HttpClient:        httpclient,
@@ -144,6 +146,7 @@ func (sdk *ContractSDK) Run() {
 	go sdk.ListenDataFromServer()
 	go sdk.WaitCMHashData()
 	go sdk.WaitHDRHashData()
+	go sdk.WatchSyncHeaderEvent()
 }
 
 func (sdk *ContractSDK) ListenDataFromServer() {
@@ -176,8 +179,6 @@ func (sdk *ContractSDK) FindSyncHeader(chainId *big.Int, height *big.Int) {
 }
 
 func (sdk *ContractSDK) UpdateTrustedHeight(chainId *big.Int, height *big.Int) {
-	sdk.mutex.Lock()
-	defer sdk.mutex.Unlock()
 	chainIdStr := chainId.String()
 	if _, ok := sdk.ClientStates[chainIdStr]; !ok {
 		sdk.ClientStates[chainIdStr] = &ClientState{
@@ -198,10 +199,19 @@ func (sdk *ContractSDK) UpdateTrustedHeight(chainId *big.Int, height *big.Int) {
 func (sdk *ContractSDK) NotifyCM(chainId *big.Int, height *big.Int) {
 	chainIdStr := chainId.String()
 	heightStr := height.String()
-	q := sdk.msgCache[chainIdStr][heightStr]
+	q, ok := sdk.MsgCache[chainIdStr+heightStr]
+	if !ok {
+		return
+	}
+	sdk.log.WithFields(logrus.Fields{
+		"method": "NotifyCM",
+	}).Info(fmt.Sprintf("NotifyCM for Chain#%d, height: %d, cm size: %d", chainId, height, q.Size()))
 	for {
 		item, ok := q.Dequeue()
 		if !ok {
+			sdk.log.WithFields(logrus.Fields{
+				"method": "NotifyCM",
+			}).Debug(fmt.Sprintf("get false from q.Dequeue(), chainId: %d, height: %d, q size: %d", chainId, height, q.Size()))
 			break
 		}
 		cmData := item.(*CacheData)
@@ -222,7 +232,11 @@ func (sdk *ContractSDK) ShouldReceiveCM(cm *SR2PC.SR2PCCrossMessage) bool {
 func (sdk *ContractSDK) CacheCM(cm *SR2PC.SR2PCCrossMessage, proof *[]byte) {
 	chainIdStr := cm.SourceChainId.String()
 	height := cm.ExpectedHeight
-	sdk.msgCache[chainIdStr][height.String()].Enqueue(
+	cacheKey := chainIdStr + height.String()
+	if _, ok := sdk.MsgCache[cacheKey]; !ok {
+		sdk.MsgCache[cacheKey] = NewQueue()
+	}
+	sdk.MsgCache[cacheKey].Enqueue(
 		&CacheData{
 			CrossMessage: cm,
 			Proof:        proof,
@@ -254,11 +268,22 @@ func (sdk *ContractSDK) DealCounterpartCM(data *CrossData) {
 			),
 		)
 		sdk.CacheCM(&cm, &proof)
+	} else {
+		sdk.log.WithFields(logrus.Fields{
+			"method": "DealCounterpartCM",
+		}).Info(
+			fmt.Sprintf("CM(chainId: %d, height: %d, expectedHeight: %d, nonce: %d)'s header has been trusted",
+				cm.SourceChainId,
+				cm.SourceHeight,
+				cm.ExpectedHeight,
+				cm.Nonce,
+			),
+		)
+		sdk.CrossReceive(&cm, &proof)
 	}
-	sdk.CrossReceive(&cm, &proof)
 }
 
-// TransmitterCrossReceive 用于 server.Transmitter 调用，将数据发送到 ContractSDK
+// TransmitterCrossReceive is called by server.Transmitter, send data to ContractSDK
 func (sdk *ContractSDK) TransmitterCrossReceive(cm []byte, proof []byte) {
 	sdk.Serv2SDK_CM <- &CrossData{Cm: cm, Proof: proof}
 }
@@ -322,7 +347,7 @@ func (sdk *ContractSDK) CrossReceive(cm *SR2PC.SR2PCCrossMessage, proof *[]byte)
 	}
 	sdk.log.WithFields(logrus.Fields{
 		"method": "CrossReceive",
-	}).Info("txHash: ", tx.Hash().Hex())
+	}).Debug("txHash: ", tx.Hash().Hex())
 
 	// send hash to channel
 	hash := tx.Hash()
@@ -412,7 +437,7 @@ func (sdk *ContractSDK) SyncHeader(data *HeaderData) {
 	}
 	sdk.log.WithFields(logrus.Fields{
 		"method": "SyncHeader",
-	}).Info("txHash: ", tx.Hash().Hex())
+	}).Debug("txHash: ", tx.Hash().Hex())
 
 	// send hash to channel
 	hash := tx.Hash()
