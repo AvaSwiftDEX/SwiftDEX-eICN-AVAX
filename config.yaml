@@ -4,12 +4,15 @@ http:
     base_url: http://127.0.0.1:8080
 chain:
     id: "1"
-    http_url: http://10.210.143.97:7545
-    ws_url: ws://10.210.143.97:7546
+    http_url: http://10.156.168.198:7545
+    ws_url: ws://10.156.168.198:7546
     key_file: node/keystore/UTC--2025-02-08T06-12-23.376721660Z--a8a410a56f93e14fb5a71f5968958851915b6909
-    key_hex: c45ba5d6de0e502aefd23c98b40a2c9018e2e0286dde4fdb542ded619cefc8bd
+    key_hex: 6a8970c85ec0f314438c231cad5d69ac370ad07405ed790bf86ce7f03f1815e1
     use_file: false
-    address: 0xa7123063c4de62495497f3db1fe77d459d13583e
+    address: 0xf24f58e1ea91da8848ffd0b8059e55d9d9e834b3
     expected_trust_delta: 1
+    lib_filter_address: "0x0000000000000000000000000000000000000000"
 collector:
     url: http://127.0.0.1:8090
+eICN:
+    async: false
