@@ -43,7 +43,7 @@ make
 make devtools
 ```
 
-## Compile contracts
+<!-- ## Compile contracts
 
 ```bash
 # generate abi and bin for contract SR2PC
@@ -51,7 +51,7 @@ solc --abi --bin --overwrite --optimize --optimize-runs 200 -o output ../SuperRu
 # generate .go
 mkdir SR2PC
 abigen --bin=output/SR2PC.bin --abi=output/SR2PC.abi --pkg=SR2PC --out=SR2PC/SR2PC.go
-```
+``` -->
 
 ## start geth dev mode
 
@@ -68,6 +68,9 @@ geth --dev --dev.period 3 --keystore ./node/keystore --allow-insecure-unlock --h
 ## deploy contract
 
 ```bash
+# compile and deploy the lib Filter
+# then compile and deploy the contract SR2PC
+# this script strictly requires the contract and library path
 ./scripts/deploy.sh --config=config.yaml
 ```
 
