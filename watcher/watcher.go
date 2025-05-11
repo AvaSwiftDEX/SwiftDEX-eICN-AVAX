@@ -163,6 +163,7 @@ func (wc *Watcher) Run() {
 	go wc.MonitorEvent()
 	go wc.CrossReceive()
 	go wc.MonitorMetrics()
+	go wc.Metrics()
 	go wc.MonitorError()
 	go wc.MonitorSyncHeader()
 }
@@ -378,6 +379,7 @@ func (wc *Watcher) MonitorMetrics() {
 				IsConfirmed:     vLog.IsConfirmed,
 				ByHeader:        vLog.ByHeader,
 				Timestamp:       uint64(time.Now().UnixMilli()),
+				TxHash:          vLog.Raw.TxHash,
 			}
 		}
 	}
