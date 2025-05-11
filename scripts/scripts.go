@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"os"
 	"strings"
 
 	"github.com/kimroniny/SuperRunner-eICN-eth2/config"
@@ -74,6 +75,35 @@ func main() {
 			cfg.SaveConfig(cfgFile)
 
 			fmt.Printf("Successfully deployed contract at: %s\n", address.Hex())
+			return nil
+		},
+	}
+
+	// DeployLibraries 命令
+	deployLibrariesCmd := &cobra.Command{
+		Use:   "deploy-lib-Filter",
+		Short: "Deploy the library Filter",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.LoadConfig(cfgFile)
+			if err != nil {
+				return fmt.Errorf("failed to load config: %v", err)
+			}
+			ctx := context.Background()
+			address, err := scripts.DeployLibraries(ctx, cfg)
+			if err != nil {
+				return fmt.Errorf("deploy libraries failed: %v", err)
+			}
+
+			_ = os.RemoveAll("SR2PC/lib")
+
+			filePath := "SR2PC/lib"
+			content := []byte(fmt.Sprintf("../SuperRunner-Contracts/contracts/2pc-master/lib/Filter.sol:Filter=%s", address.Hex()))
+			fmt.Println("content:", string(content))
+			if err := os.WriteFile(filePath, content, 0644); err != nil {
+				return fmt.Errorf("failed to write to file: %v", err)
+			}
+
+			fmt.Printf("Successfully deployed library Filter at: %s\n", address.Hex())
 			return nil
 		},
 	}
@@ -149,6 +179,7 @@ func main() {
 	// 添加子命令到根命令
 	rootCmd.AddCommand(
 		deployCmd,
+		deployLibrariesCmd,
 		crossSendCmd,
 		registEICNCmd,
 	)

@@ -29,6 +29,7 @@ type Config struct {
 		UseFile            bool           `yaml:"use_file"`
 		Address            common.Address `yaml:"address,omitempty"`
 		ExpectedTrustDelta uint64         `yaml:"expected_trust_delta"`
+		LibFilterAddress   common.Address `yaml:"lib_filter_address,omitempty"`
 	} `yaml:"chain"`
 
 	Collector struct {
