@@ -2,6 +2,8 @@ package metrics
 
 import (
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // MetricsData represents the metrics data structure
@@ -14,4 +16,5 @@ type MetricsData struct {
 	IsConfirmed     bool
 	ByHeader        bool
 	Timestamp       uint64
+	TxHash			common.Hash
 }

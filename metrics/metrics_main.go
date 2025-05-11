@@ -11,11 +11,12 @@ import (
 func main() {
 	// 定义命令行参数
 	url := flag.String("url", "127.0.0.1:8090", "metrics collector server url")
+	logfile := flag.String("logfile", "logs/metrics.log", "log file path")
 	flag.Parse()
 
 	// 初始化日志
 	if logger.GetLogger() == nil {
-		logger.InitLogger("")
+		logger.InitLogger(*logfile)
 	}
 	log := logger.GetLogger()
 	wg := sync.WaitGroup{}
