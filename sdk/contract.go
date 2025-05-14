@@ -55,7 +55,7 @@ type EventSyncHeader struct {
 }
 
 type CacheData struct {
-	CrossMessage *SR2PC.SR2PCCrossMessage
+	CrossMessage *SR2PC.CrossMessage
 	Proof        *[]byte
 }
 
@@ -221,7 +221,7 @@ func (sdk *ContractSDK) NotifyCM(chainId *big.Int, height *big.Int) {
 	}
 }
 
-func (sdk *ContractSDK) ShouldReceiveCM(cm *SR2PC.SR2PCCrossMessage) bool {
+func (sdk *ContractSDK) ShouldReceiveCM(cm *SR2PC.CrossMessage) bool {
 	chainIdStr := cm.SourceChainId.String()
 	height := cm.ExpectedHeight
 	clientState, ok := sdk.ClientStates[chainIdStr]
@@ -231,7 +231,7 @@ func (sdk *ContractSDK) ShouldReceiveCM(cm *SR2PC.SR2PCCrossMessage) bool {
 	return true
 }
 
-func (sdk *ContractSDK) CacheCM(cm *SR2PC.SR2PCCrossMessage, proof *[]byte) {
+func (sdk *ContractSDK) CacheCM(cm *SR2PC.CrossMessage, proof *[]byte) {
 	chainIdStr := cm.SourceChainId.String()
 	height := cm.ExpectedHeight
 	cacheKey := chainIdStr + height.String()
@@ -247,7 +247,7 @@ func (sdk *ContractSDK) CacheCM(cm *SR2PC.SR2PCCrossMessage, proof *[]byte) {
 }
 
 func (sdk *ContractSDK) DealCounterpartCM(data *CrossData) {
-	cm := SR2PC.SR2PCCrossMessage{}
+	cm := SR2PC.CrossMessage{}
 	err := json.Unmarshal(data.Cm, &cm)
 	if err != nil {
 		return
@@ -291,7 +291,7 @@ func (sdk *ContractSDK) TransmitterCrossReceive(cm []byte, proof []byte) {
 }
 
 // CrossReceive handles the data received from the channel (specific logic to be determined later)
-func (sdk *ContractSDK) CrossReceive(cm *SR2PC.SR2PCCrossMessage, proof *[]byte) {
+func (sdk *ContractSDK) CrossReceive(cm *SR2PC.CrossMessage, proof *[]byte) {
 	sdk.mutex.Lock()
 	defer sdk.mutex.Unlock()
 

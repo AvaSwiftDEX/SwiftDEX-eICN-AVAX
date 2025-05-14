@@ -305,7 +305,7 @@ func (wc *Watcher) GetRoot(instance *SR2PC.SR2PC, height *big.Int) (common.Hash,
 	return hash, nil
 }
 
-func (wc *Watcher) GetProof(instance *SR2PC.SR2PC, cm *SR2PC.SR2PCCrossMessage) ([]byte, error) {
+func (wc *Watcher) GetProof(instance *SR2PC.SR2PC, cm *SR2PC.CrossMessage) ([]byte, error) {
 	// TODO: get proof from instance
 	hash := sha256.Sum256([]byte(fmt.Sprintf("root of block height: %d\n", cm.ExpectedHeight)))
 	proof := hash[:]
