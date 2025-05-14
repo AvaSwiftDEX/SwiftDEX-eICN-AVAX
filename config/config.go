@@ -30,6 +30,8 @@ type Config struct {
 		Address            common.Address `yaml:"address,omitempty"`
 		ExpectedTrustDelta uint64         `yaml:"expected_trust_delta"`
 		LibFilterAddress   common.Address `yaml:"lib_filter_address,omitempty"`
+		AppStateAddress    common.Address `yaml:"app_state_address,omitempty"`
+		AppStateName       string         `yaml:"app_state_name,omitempty"`
 	} `yaml:"chain"`
 
 	Collector struct {

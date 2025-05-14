@@ -44,7 +44,7 @@ if [ $? -eq 0 ]; then
 fi
 
 # echo ">>> >>> >>> start analysis"
-# screen -L -S session_analysis -dm ./analysis/run_analysis.sh
+# screen -L -S session_analysis -dm ./analysis/run_analysis.sh 1
 # sleep 2s
 # check_session "session_analysis"
 
@@ -82,6 +82,6 @@ echo ">>> >>> >>> start regist"
 
 # echo ">>> >>> >>> start cross send"
 # sleep 3s
-# ./scripts/cross_send.sh --chain-ids="2,3" --value="100" --config=evaluation/configs/config1.yaml
+# ./scripts/cross_send.sh --chain-ids="2,3" --value="100" --app-identifier="State" --app-value-id="0" --config=evaluation/configs/config1.yaml
 
 echo ">>> >>> >>> Finished!"
