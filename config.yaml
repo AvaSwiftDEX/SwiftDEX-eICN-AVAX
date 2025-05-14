@@ -9,9 +9,10 @@ chain:
     key_file: node/keystore/UTC--2025-02-08T06-12-23.376721660Z--a8a410a56f93e14fb5a71f5968958851915b6909
     key_hex: 6a8970c85ec0f314438c231cad5d69ac370ad07405ed790bf86ce7f03f1815e1
     use_file: false
-    address: 0xf24f58e1ea91da8848ffd0b8059e55d9d9e834b3
+    address: 0x1d0d49b54f4d742fb94e3e9cce983fe8077bace1
     expected_trust_delta: 1
     lib_filter_address: "0x0000000000000000000000000000000000000000"
+    app_state_address: 0xdc299d217ae5e2a37470e8ea338b2fda1f445bad
 collector:
     url: http://127.0.0.1:8090
 eICN:
