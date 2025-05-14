@@ -18,8 +18,10 @@ var (
 	cfgFile string
 
 	// cross-send 命令的标志
-	chainIDsStr string
-	value       string
+	chainIDsStr   string
+	value         string
+	appIdentifier string
+	appValueIdStr string
 
 	// regist-eICN 命令的标志
 	targetConfigFile string
@@ -108,6 +110,45 @@ func main() {
 		},
 	}
 
+	// DeployAppState 命令
+	deployAppStateCmd := &cobra.Command{
+		Use:   "deploy-app-State",
+		Short: "Deploy the AppState contract",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.LoadConfig(cfgFile)
+			if err != nil {
+				return fmt.Errorf("failed to load config: %v", err)
+			}
+			ctx := context.Background()
+			address, err := scripts.DeployAppState(ctx, cfg)
+			if err != nil {
+				return fmt.Errorf("deploy failed: %v", err)
+			}
+			cfg.Chain.AppStateAddress = address
+			cfg.SaveConfig(cfgFile)
+
+			fmt.Printf("Successfully deployed AppState contract at: %s\n", address.Hex())
+			return nil
+		},
+	}
+
+	registerAppStateCmd := &cobra.Command{
+		Use:   "register-app-State",
+		Short: "Register the AppState contract",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.LoadConfig(cfgFile)
+			if err != nil {
+				return fmt.Errorf("failed to load config: %v", err)
+			}
+			ctx := context.Background()
+			if err := scripts.RegisterAppState(ctx, cfg); err != nil {
+				return fmt.Errorf("RegisterAppState failed: %v", err)
+			}
+			fmt.Println("RegisterAppState completed successfully")
+			return nil
+		},
+	}
+
 	// Cross-send 命令
 	crossSendCmd := &cobra.Command{
 		Use:   "cross-send",
@@ -131,11 +172,23 @@ func main() {
 				return fmt.Errorf("invalid value: %s", value)
 			}
 
+			// 解析 appIdentifier
+			_ = appIdentifier
+
+			// 解析 appValueId
+			appValueId := new(big.Int)
+			_, success = appValueId.SetString(appValueIdStr, 10)
+			if !success {
+				return fmt.Errorf("invalid app value ID: %s", appValueIdStr)
+			}
+
 			// 构造参数
 			crossSendArgs := []scripts.CrossSendArg{
 				{
-					ChainIDs: chainIDs,
-					Value:    val,
+					ChainIDs:      chainIDs,
+					Value:         val,
+					AppIdentifier: appIdentifier,
+					AppValueId:    appValueId,
 				},
 			}
 
@@ -152,8 +205,12 @@ func main() {
 	// 添加 cross-send 命令的标志
 	crossSendCmd.Flags().StringVar(&chainIDsStr, "chain-ids", "", "Comma-separated chain IDs (e.g., '1,2,3')")
 	crossSendCmd.Flags().StringVar(&value, "value", "0", "Value to send")
+	crossSendCmd.Flags().StringVar(&appIdentifier, "app-identifier", "", "App identifier")
+	crossSendCmd.Flags().StringVar(&appValueIdStr, "app-value-id", "", "App value ID")
 	crossSendCmd.MarkFlagRequired("chain-ids")
 	crossSendCmd.MarkFlagRequired("value")
+	crossSendCmd.MarkFlagRequired("app-identifier")
+	crossSendCmd.MarkFlagRequired("app-value-id")
 
 	// RegistEICN 命令
 	registEICNCmd := &cobra.Command{
@@ -180,6 +237,8 @@ func main() {
 	rootCmd.AddCommand(
 		deployCmd,
 		deployLibrariesCmd,
+		deployAppStateCmd,
+		registerAppStateCmd,
 		crossSendCmd,
 		registEICNCmd,
 	)

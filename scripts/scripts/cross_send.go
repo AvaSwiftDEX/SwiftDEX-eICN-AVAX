@@ -18,8 +18,10 @@ import (
 )
 
 type CrossSendArg struct {
-	ChainIDs []*big.Int
-	Value    *big.Int
+	ChainIDs      []*big.Int
+	Value         *big.Int
+	AppIdentifier string
+	AppValueId    *big.Int
 }
 
 func CrossSend(ctx context.Context, config *config.Config, args []CrossSendArg) error {
@@ -86,7 +88,7 @@ func CrossSend(ctx context.Context, config *config.Config, args []CrossSendArg) 
 		auth.Nonce = big.NewInt(int64(nonce))
 
 		// send tx
-		tx, err := instance.CrossSend(auth, arg.ChainIDs, arg.Value)
+		tx, err := instance.CrossSend(auth, arg.ChainIDs, arg.Value, arg.AppIdentifier, arg.AppValueId)
 		if err != nil {
 			return err
 		}
