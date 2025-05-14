@@ -82,7 +82,7 @@ func (aly *Analyzer) AnalysisMetrics(data metrics.MetricsData) {
 	fmt.Printf("  CM Hash: %s\n", cmHash)
 	fmt.Printf("  Chain ID: %s\n", data.ChainId.String())
 	fmt.Printf("  Height: %s\n", data.Height.String())
-	fmt.Printf("  Phase: %d\n", data.Phase)
+	fmt.Printf("  Phase: %s\n", data.PhaseStr())
 	fmt.Printf("  Is Confirmed: %t\n", data.IsConfirmed)
 	fmt.Printf("  By Header: %t\n", data.ByHeader)
 	fmt.Printf("  Timestamp: %d\n", data.Timestamp)
