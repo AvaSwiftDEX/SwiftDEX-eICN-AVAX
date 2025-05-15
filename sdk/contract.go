@@ -376,6 +376,7 @@ func (sdk *ContractSDK) WaitCMHashData() {
 			}).Error("CrossReceive transaction failed: ", cmHash.Hash.Hex())
 			return
 		}
+		sdk.ParseRetryEvent(receipt)
 		// TODO: check whether the tx needs to be resend
 		// sdk.InstanceCM.ParseSendCMHash()
 		// boundContract := bind.NewBoundContract(sdk.Address, SR2PC.SR2PCMetaData.GetAbi(), sdk.HttpClient, auth, sdk.InstanceCM.SR2PCCaller)
@@ -479,18 +480,32 @@ func (sdk *ContractSDK) ParseRetryEvent(receipt *types.Receipt) {
 			sdk.log.WithFields(logrus.Fields{
 				"method": "ParseRetryEvent",
 			}).Info("RetryPrepareConfirmCM event: ", hex.EncodeToString(eventRPC.CmHash[:]))
+			break
 		}
 		eventRPU, err := sdk.InstanceCM.ParseRetryPrepareUnconfirmCM(*log)
 		if err == nil {
 			sdk.log.WithFields(logrus.Fields{
 				"method": "ParseRetryEvent",
 			}).Info("RetryPrepareUnconfirmCM event: ", hex.EncodeToString(eventRPU.CmHash[:]))
+			break
 		}
 		eventRRC, err := sdk.InstanceCM.ParseRetryRollbackConfirmCM(*log)
 		if err == nil {
 			sdk.log.WithFields(logrus.Fields{
 				"method": "ParseRetryEvent",
 			}).Info("RetryRollbackConfirmCM event: ", hex.EncodeToString(eventRRC.CmHash[:]))
+			break
 		}
+		// eventError, err := sdk.InstanceCM.ParseError(*log)
+		// if err == nil {
+		// 	sdk.log.WithFields(logrus.Fields{
+		// 		"method": "ParseRetryEvent",
+		// 	}).Info("Error event from ParseError: ", eventError.Reason)
+		// } else {
+		// 	sdk.log.WithFields(logrus.Fields{
+		// 		"method": "ParseRetryEvent",
+		// 	}).Debug("Error event from ParseError while error: ", err)
+		// 	break
+		// }
 	}
 }
