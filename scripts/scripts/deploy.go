@@ -258,7 +258,7 @@ func RegisterAppState(ctx context.Context, config *config.Config) error {
 		return err
 	}
 	if receipt.Status == types.ReceiptStatusFailed {
-		return errors.New("receipt failed")
+		return errors.New("register app state receipt failed")
 	}
 	return nil
 }

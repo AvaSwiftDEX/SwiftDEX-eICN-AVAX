@@ -23,6 +23,9 @@ var (
 	appIdentifier string
 	appValueIdStr string
 
+	// init-app-state-values 命令的标志
+	valuesStr string
+
 	// regist-eICN 命令的标志
 	targetConfigFile string
 )
@@ -46,6 +49,23 @@ func parseChainIDs(chainIDsStr string) ([]*big.Int, error) {
 	}
 
 	return chainIDs, nil
+}
+
+func parseInitAppStateValues(valuesStr string) ([]*big.Int, error) {
+	if valuesStr == "" {
+		return nil, nil
+	}
+
+	values := strings.Split(valuesStr, ",")
+	valuesInt := make([]*big.Int, len(values))
+	for i, v := range values {
+		valuesInt[i] = new(big.Int)
+		_, success := valuesInt[i].SetString(v, 10)
+		if !success {
+			return nil, fmt.Errorf("invalid value: %s", v)
+		}
+	}
+	return valuesInt, nil
 }
 
 func main() {
@@ -131,6 +151,32 @@ func main() {
 			return nil
 		},
 	}
+
+	initAppStateValuesCmd := &cobra.Command{
+		Use:   "init-app-state-values",
+		Short: "Init the AppState contract",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.LoadConfig(cfgFile)
+			if err != nil {
+				return fmt.Errorf("failed to load config: %v", err)
+			}
+			ctx := context.Background()
+			values, err := parseInitAppStateValues(valuesStr)
+			if err != nil {
+				return fmt.Errorf("failed to parse values: %v", err)
+			}
+			initAppStateValuesArg := scripts.InitAppStateValuesArg{
+				Values: values,
+			}
+			if err := scripts.InitAppStateValues(ctx, cfg, initAppStateValuesArg); err != nil {
+				return fmt.Errorf("init AppStateValues failed: %v", err)
+			}
+			fmt.Println("InitAppStateValues completed successfully")
+			return nil
+		},
+	}
+	initAppStateValuesCmd.Flags().StringVar(&valuesStr, "values", "", "Values to init")
+	initAppStateValuesCmd.MarkFlagRequired("values")
 
 	registerAppStateCmd := &cobra.Command{
 		Use:   "register-app-State",
@@ -238,6 +284,7 @@ func main() {
 		deployCmd,
 		deployLibrariesCmd,
 		deployAppStateCmd,
+		initAppStateValuesCmd,
 		registerAppStateCmd,
 		crossSendCmd,
 		registEICNCmd,
