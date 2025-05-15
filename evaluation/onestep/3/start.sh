@@ -49,9 +49,16 @@ fi
 # check_session "session_analysis"
 
 echo ">>> >>> >>> start deploy"
-./scripts/deploy.sh --config=evaluation/configs/config1.yaml
-./scripts/deploy.sh --config=evaluation/configs/config2.yaml
-./scripts/deploy.sh --config=evaluation/configs/config3.yaml
+./scripts/deploy.sh --config=evaluation/configs/config1.yaml &
+./scripts/deploy.sh --config=evaluation/configs/config2.yaml &
+./scripts/deploy.sh --config=evaluation/configs/config3.yaml &
+wait
+
+echo ">>> >>> >>> start init values"
+./scripts/init_values.sh --values="100,100,100" --config=evaluation/configs/config1.yaml &
+./scripts/init_values.sh --values="100,100,100" --config=evaluation/configs/config2.yaml &
+./scripts/init_values.sh --values="100,100,100" --config=evaluation/configs/config3.yaml &
+wait
 
 echo ">>> >>> >>> start eICN"
 screen -L -S session_eICN_1 -dm go run main.go --config=evaluation/configs/config1.yaml --log=logs/1.log --debug=$DEBUG
