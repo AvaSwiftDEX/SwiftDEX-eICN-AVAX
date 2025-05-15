@@ -441,7 +441,7 @@ func (wc *Watcher) MonitorError() {
 			wc.log.Error("subscribeWarningEvent, the sub error: ", err)
 			return
 		case vLog := <-logs:
-			wc.log.Warning(fmt.Sprintf("find a new log(Error), sourceChainId: %d, targetChainId: %d, phase: %d, reason: %s, others: %s", vLog.Cm.SourceChainId, vLog.Cm.TargetChainId, vLog.Cm.Phase, vLog.Reason, hex.EncodeToString(vLog.Others)))
+			wc.log.Warning(fmt.Sprintf("find a new log(Error), transactionHash: %s, sourceChainId: %d, targetChainId: %d, phase: %d, reason: %s, others: %s", hex.EncodeToString(vLog.Cm.Payload[1]), vLog.Cm.SourceChainId, vLog.Cm.TargetChainId, vLog.Cm.Phase, vLog.Reason, hex.EncodeToString(vLog.Others)))
 		case vLog := <-logsWarning:
 			wc.log.Warning(fmt.Sprintf("find a new log(Warning), reason: %s, others: %s", vLog.Reason, hex.EncodeToString(vLog.Others)))
 		}
