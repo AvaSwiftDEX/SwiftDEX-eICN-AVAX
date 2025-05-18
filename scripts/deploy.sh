@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e  # Exit immediately if a command exits with a non-zero status
+
 # 获取执行该脚本时的所有参数
 params="$@"
 
