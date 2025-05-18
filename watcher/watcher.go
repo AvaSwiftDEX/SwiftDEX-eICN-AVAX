@@ -370,6 +370,13 @@ func (wc *Watcher) MonitorMetrics() {
 					vLog.ByHeader,
 				),
 			)
+			// TODO: add gas used
+			// receipt, err := wc.contractSDK.HttpClient.TransactionReceipt(wc.ctx, vLog.Raw.TxHash)
+			// if err != nil {
+			// 	wc.log.WithError(err).Error("failed to get transaction receipt")
+			// 	continue
+			// }
+			// gasUsed := receipt.GasUsed
 			wc.metricsCh <- &metrics.MetricsData{
 				TransactionHash: vLog.TransactionHash,
 				CmHash:          vLog.CmHash,
@@ -380,6 +387,9 @@ func (wc *Watcher) MonitorMetrics() {
 				ByHeader:        vLog.ByHeader,
 				Timestamp:       uint64(time.Now().UnixMilli()),
 				TxHash:          vLog.Raw.TxHash,
+				Root:            vLog.Root,
+				FromChainId:     vLog.FromChainId,
+				FromHeight:      vLog.FromHeight,
 			}
 		}
 	}
