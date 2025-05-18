@@ -1,6 +1,8 @@
 package metrics
 
 import (
+	"encoding/hex"
+	"encoding/json"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -40,15 +42,21 @@ var phaseToString = map[uint8]string{
 
 // MetricsData represents the metrics data structure
 type MetricsData struct {
-	TransactionHash [32]byte
-	CmHash          [32]byte
-	ChainId         *big.Int
-	Height          *big.Int
-	Phase           uint8
-	IsConfirmed     bool
-	ByHeader        bool
-	Timestamp       uint64
-	TxHash          common.Hash
+	TransactionHash [32]byte    `json:"transactionHash"`
+	CmHash          [32]byte    `json:"cmHash"`
+	ChainId         *big.Int    `json:"chainId"`
+	Height          *big.Int    `json:"height"`
+	Phase           uint8       `json:"phase"`
+	IsConfirmed     bool        `json:"isConfirmed"`
+	ByHeader        bool        `json:"byHeader"`
+	Timestamp       uint64      `json:"timestamp"`
+	TxHash          common.Hash `json:"txHash"`
+	Forged          bool        `json:"forged"`
+	Retry           bool        `json:"retry"`
+	Gas             uint64      `json:"gas"`
+	Root            [32]byte    `json:"root"`
+	FromChainId     *big.Int    `json:"fromChainId"`
+	FromHeight      *big.Int    `json:"fromHeight"`
 }
 
 func (m *MetricsData) PhaseStr() string {
@@ -56,4 +64,31 @@ func (m *MetricsData) PhaseStr() string {
 		return str
 	}
 	return "Unknown"
+}
+
+func (m *MetricsData) MarshalJSON() ([]byte, error) {
+	type Alias MetricsData
+	return json.Marshal(&struct {
+		Phase           string `json:"phase"`
+		TxHash          string `json:"txHash"`
+		ChainId         string `json:"chainId"`
+		Height          string `json:"height"`
+		TransactionHash string `json:"transactionHash"`
+		CmHash          string `json:"cmHash"`
+		Root            string `json:"root"`
+		FromChainId     string `json:"fromChainId"`
+		FromHeight      string `json:"fromHeight"`
+		*Alias
+	}{
+		Phase:           m.PhaseStr(),
+		TxHash:          m.TxHash.String(),
+		ChainId:         m.ChainId.String(),
+		Height:          m.Height.String(),
+		TransactionHash: hex.EncodeToString(m.TransactionHash[:]),
+		CmHash:          hex.EncodeToString(m.CmHash[:]),
+		Root:            hex.EncodeToString(m.Root[:]),
+		FromChainId:     m.FromChainId.String(),
+		FromHeight:      m.FromHeight.String(),
+		Alias:           (*Alias)(m),
+	})
 }
