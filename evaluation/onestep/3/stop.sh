@@ -1,5 +1,7 @@
 # !/bin/bash
 
+set -e  # Exit immediately if a command exits with a non-zero status
+
 stop_session() {
     local session_name="$1"
     if screen -ls | grep -q "$session_name"; then
