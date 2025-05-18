@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"time"
@@ -15,6 +16,7 @@ func main() {
 	serverURL := flag.String("metrics-server-url", "127.0.0.1:8090", "metrics collector server websocket url")
 	logfile := flag.String("logfile", "logs/analysis.log", "log file path")
 	totalNumber := flag.Int("total-number", 0, "total number of transactions")
+	identifier := flag.String("identifier", "", "identifier of the analysis")
 	flag.Parse()
 
 	// 初始化日志
@@ -34,17 +36,20 @@ func main() {
 	analyzer := NewAnalyzer(*totalNumber)
 
 	// Create a new routine to check if all transactions are finished
-	stopped := false
+	stopped := make(chan bool, 1)
 	go func() {
 		for {
-			if stopped {
-				break
-			}
-			time.Sleep(time.Second * 3)
-			log.Infof("Finished number: %d, Total number: %d\n", analyzer.finishedNumber, *totalNumber)
-			if analyzer.finishedNumber == *totalNumber {
-				log.Infof("All transactions are finished\n")
-				os.Exit(0)
+			select {
+			case <-stopped:
+				return
+			default:
+				time.Sleep(time.Second * 3)
+				log.Infof("Finished number: %d, Total number: %d\n", analyzer.finishedNumber, *totalNumber)
+				if analyzer.finishedNumber == *totalNumber {
+					log.Infof("All transactions are finished\n")
+					stopped <- true
+					return
+				}
 			}
 		}
 	}()
@@ -61,11 +66,22 @@ func main() {
 	log.Infof("Press Ctrl+C to exit")
 
 	// Wait for interrupt signal
-	<-interrupt
-	stopped = true
-	log.Infof("Shutting down...")
+	select {
+	case <-interrupt:
+		stopped <- true
+		log.Infof("Interrupted! Shutting down...")
+	case <-stopped:
+		log.Infof("Finished! Shutting down...")
+	}
 
 	// Close the websocket connection
 	client.UnsubscribeFromMetrics()
 	time.Sleep(time.Second) // Give it time to close properly
+
+	observation, err := ExtractObservation(analyzer.transHashStorage)
+	if err != nil {
+		log.Errorf("Error extracting observation: %v\n", err)
+		return
+	}
+	os.WriteFile(fmt.Sprintf("observation/%s.json", *identifier), observation, 0644)
 }
