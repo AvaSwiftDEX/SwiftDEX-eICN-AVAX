@@ -91,11 +91,10 @@ func NewContractSDK(ctx context.Context, url string, chainId *big.Int, address c
 		panic(err)
 	}
 	// get public key
-	publicKey := privateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		log.Fatal("cannot assert type: publicKey is not of type *ecdsa.PublicKey")
-		return nil
+	var publicKeyECDSA *ecdsa.PublicKey
+	publicKeyECDSA = nil
+	if privateKey != nil {
+		publicKeyECDSA = privateKey.Public().(*ecdsa.PublicKey)
 	}
 	// get chainID
 	chainNativeID, err := httpclient.ChainID(ctx)
