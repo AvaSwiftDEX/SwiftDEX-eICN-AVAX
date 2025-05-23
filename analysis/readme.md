@@ -43,11 +43,14 @@ Evaluation Protocols:
 
 Factors:
 
-- WCN (Worker Chain Number): change number of worker blockchains
-- TN (Transaction Number): change issuance number of transactions
-- FP (Forged Probability): change forged block number for each height
-- SDL (Shadow Lock): change transaction number in each block
-- WCR (Write Conflict Rate): conflict number / write number
+- First Level:
+  - WCR (Write Conflict Rate): transaction number of writing on the same state
+  - FP (Forged Probability): change forged block number for each height
+  - FL (Finalization Latency): the finalization latency in an overall block epoch
+- Second Level:
+  - WCN (Worker Chain Number): change number of worker blockchains
+  - TN (Transaction Number): change issuance number of transactions
+  - SDL (Shadow Lock): change transaction number in each block
 
 Observation:
 
