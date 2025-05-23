@@ -1,12 +1,15 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
+	"github.com/kimroniny/SuperRunner-eICN-eth2/config"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/logger"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/metrics/metrics"
 )
@@ -17,6 +20,8 @@ func main() {
 	logfile := flag.String("logfile", "logs/analysis.log", "log file path")
 	totalNumber := flag.Int("total-number", 0, "total number of transactions")
 	identifier := flag.String("identifier", "", "identifier of the analysis")
+	configfiles := flag.String("config-files", "config.yaml", "config files, separated by comma")
+	extract := flag.Bool("extract", false, "only extract observation")
 	flag.Parse()
 
 	// 初始化日志
@@ -34,6 +39,30 @@ func main() {
 
 	// Create a new analyzer
 	analyzer := NewAnalyzer(*totalNumber)
+
+	// all config files
+	configs := make([]*config.Config, 0)
+	configs_filename := strings.Split(*configfiles, ",")
+	for _, config_filename := range configs_filename {
+		cfg, err := config.LoadConfig(config_filename)
+		if err != nil {
+			log.Errorf("failed to load config: %v", err)
+			os.Exit(1)
+		}
+		configs = append(configs, cfg)
+	}
+
+	temp_filename := fmt.Sprintf("temp/%s.json", *identifier)
+	if *extract {
+		fmt.Println("extract observation from file: ", temp_filename)
+		observation, err := ExtractObservationFromFile(temp_filename, configs)
+		if err != nil {
+			log.Errorf("Error extracting observation: %v\n", err)
+			return
+		}
+		os.WriteFile(fmt.Sprintf("observation/%s.json", *identifier), observation, 0644)
+		return
+	}
 
 	// Create a new routine to check if all transactions are finished
 	stopped := make(chan bool, 1)
@@ -78,7 +107,15 @@ func main() {
 	client.UnsubscribeFromMetrics()
 	time.Sleep(time.Second) // Give it time to close properly
 
-	observation, err := ExtractObservation(analyzer.transHashStorage)
+	// write analyzer.transHashStorage to temp file
+	temp_data, err := json.Marshal(analyzer.transHashStorage)
+	if err != nil {
+		log.Errorf("Error marshalling transHashStorage: %v\n", err)
+		return
+	}
+	os.WriteFile(temp_filename, temp_data, 0644)
+
+	observation, err := ExtractObservation(analyzer.transHashStorage, configs)
 	if err != nil {
 		log.Errorf("Error extracting observation: %v\n", err)
 		return
