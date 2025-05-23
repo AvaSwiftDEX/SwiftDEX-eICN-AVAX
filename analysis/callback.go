@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math/big"
 
@@ -41,12 +42,79 @@ const (
 )
 
 type TransactionStorage struct {
-	Metrics          []metrics.MetricsData
-	CoordinatorChain *big.Int // if Phase == 0, CoordinatorChain is the chain id
-	WorkerChains     []*big.Int
-	WorkerChainSet   map[string]bool
-	WorkerChainSize  int
-	Finished         bool
+	Metrics          []metrics.MetricsData `json:"metrics"`
+	CoordinatorChain *big.Int              `json:"coordinatorChain"` // if Phase == 0, CoordinatorChain is the chain id
+	WorkerChains     []*big.Int            `json:"workerChains"`
+	WorkerChainSet   map[string]bool       `json:"workerChainSet"`
+	WorkerChainSize  int                   `json:"workerChainSize"`
+	Finished         bool                  `json:"finished"`
+}
+
+func (ts *TransactionStorage) MarshalJSON() ([]byte, error) {
+	type Alias struct {
+		Metrics          []metrics.MetricsData `json:"metrics"`
+		CoordinatorChain string                `json:"coordinatorChain"`
+		WorkerChains     []string              `json:"workerChains"`
+		WorkerChainSet   map[string]bool       `json:"workerChainSet"`
+		WorkerChainSize  int                   `json:"workerChainSize"`
+		Finished         bool                  `json:"finished"`
+	}
+
+	workerChains := make([]string, len(ts.WorkerChains))
+	for i, chain := range ts.WorkerChains {
+		workerChains[i] = chain.String()
+	}
+
+	alias := Alias{
+		Metrics:          ts.Metrics,
+		CoordinatorChain: ts.CoordinatorChain.String(),
+		WorkerChains:     workerChains,
+		WorkerChainSet:   ts.WorkerChainSet,
+		WorkerChainSize:  ts.WorkerChainSize,
+		Finished:         ts.Finished,
+	}
+
+	return json.Marshal(alias)
+}
+
+func (ts *TransactionStorage) UnmarshalJSON(data []byte) error {
+	type Alias struct {
+		Metrics          []metrics.MetricsData `json:"metrics"`
+		CoordinatorChain string                `json:"coordinatorChain"`
+		WorkerChains     []string              `json:"workerChains"`
+		WorkerChainSet   map[string]bool       `json:"workerChainSet"`
+		WorkerChainSize  int                   `json:"workerChainSize"`
+		Finished         bool                  `json:"finished"`
+	}
+
+	var alias Alias
+	if err := json.Unmarshal(data, &alias); err != nil {
+		return err
+	}
+
+	ts.Metrics = alias.Metrics
+	ts.WorkerChainSet = alias.WorkerChainSet
+	ts.WorkerChainSize = alias.WorkerChainSize
+	ts.Finished = alias.Finished
+
+	// Convert CoordinatorChain from string to *big.Int
+	coordinatorChain := new(big.Int)
+	if _, ok := coordinatorChain.SetString(alias.CoordinatorChain, 10); !ok {
+		return fmt.Errorf("invalid coordinator chain value: %s", alias.CoordinatorChain)
+	}
+	ts.CoordinatorChain = coordinatorChain
+
+	// Convert WorkerChains from []string to []*big.Int
+	ts.WorkerChains = make([]*big.Int, len(alias.WorkerChains))
+	for i, chainStr := range alias.WorkerChains {
+		chain := new(big.Int)
+		if _, ok := chain.SetString(chainStr, 10); !ok {
+			return fmt.Errorf("invalid worker chain value at index %d: %s", i, chainStr)
+		}
+		ts.WorkerChains[i] = chain
+	}
+
+	return nil
 }
 
 type Analyzer struct {
