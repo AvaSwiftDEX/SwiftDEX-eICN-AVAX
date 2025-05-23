@@ -3,6 +3,7 @@ package metrics
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -55,6 +56,7 @@ type MetricsData struct {
 	Retry           bool        `json:"retry"`
 	Gas             uint64      `json:"gas"`
 	Root            [32]byte    `json:"root"`
+	RealRoot        [32]byte    `json:"realRoot"`
 	FromChainId     *big.Int    `json:"fromChainId"`
 	FromHeight      *big.Int    `json:"fromHeight"`
 }
@@ -66,29 +68,129 @@ func (m *MetricsData) PhaseStr() string {
 	return "Unknown"
 }
 
-func (m *MetricsData) MarshalJSON() ([]byte, error) {
+func (m MetricsData) MarshalJSON() ([]byte, error) {
 	type Alias MetricsData
 	return json.Marshal(&struct {
-		Phase           string `json:"phase"`
-		TxHash          string `json:"txHash"`
-		ChainId         string `json:"chainId"`
-		Height          string `json:"height"`
 		TransactionHash string `json:"transactionHash"`
 		CmHash          string `json:"cmHash"`
+		ChainId         string `json:"chainId"`
+		Height          string `json:"height"`
+		Phase           string `json:"phase"`
+		TxHash          string `json:"txHash"`
 		Root            string `json:"root"`
+		RealRoot        string `json:"realRoot"`
+		FromChainId     string `json:"fromChainId"`
+		FromHeight      string `json:"fromHeight"`
+		Alias
+	}{
+		TransactionHash: hex.EncodeToString(m.TransactionHash[:]),
+		CmHash:          hex.EncodeToString(m.CmHash[:]),
+		ChainId:         m.ChainId.String(),
+		Height:          m.Height.String(),
+		Phase:           m.PhaseStr(),
+		TxHash:          m.TxHash.String(),
+		Root:            hex.EncodeToString(m.Root[:]),
+		RealRoot:        hex.EncodeToString(m.RealRoot[:]),
+		FromChainId:     m.FromChainId.String(),
+		FromHeight:      m.FromHeight.String(),
+		Alias:           Alias(m),
+	})
+}
+
+func (m *MetricsData) UnmarshalJSON(data []byte) error {
+	type Alias MetricsData
+	aux := &struct {
+		TransactionHash string `json:"transactionHash"`
+		CmHash          string `json:"cmHash"`
+		ChainId         string `json:"chainId"`
+		Height          string `json:"height"`
+		Phase           string `json:"phase"`
+		TxHash          string `json:"txHash"`
+		Root            string `json:"root"`
+		RealRoot        string `json:"realRoot"`
 		FromChainId     string `json:"fromChainId"`
 		FromHeight      string `json:"fromHeight"`
 		*Alias
 	}{
-		Phase:           m.PhaseStr(),
-		TxHash:          m.TxHash.String(),
-		ChainId:         m.ChainId.String(),
-		Height:          m.Height.String(),
-		TransactionHash: hex.EncodeToString(m.TransactionHash[:]),
-		CmHash:          hex.EncodeToString(m.CmHash[:]),
-		Root:            hex.EncodeToString(m.Root[:]),
-		FromChainId:     m.FromChainId.String(),
-		FromHeight:      m.FromHeight.String(),
-		Alias:           (*Alias)(m),
-	})
+		Alias: (*Alias)(m),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Convert TransactionHash
+	transactionHash, err := hex.DecodeString(aux.TransactionHash)
+	if err != nil {
+		return fmt.Errorf("invalid transaction hash: %s", err)
+	}
+	copy(m.TransactionHash[:], transactionHash)
+
+	// Convert CmHash
+	cmHash, err := hex.DecodeString(aux.CmHash)
+	if err != nil {
+		return fmt.Errorf("invalid cm hash: %s", err)
+	}
+	copy(m.CmHash[:], cmHash)
+
+	// Convert ChainId
+	chainId := new(big.Int)
+	if _, ok := chainId.SetString(aux.ChainId, 10); !ok {
+		return fmt.Errorf("invalid chain id: %s", aux.ChainId)
+	}
+	m.ChainId = chainId
+
+	// Convert Height
+	height := new(big.Int)
+	if _, ok := height.SetString(aux.Height, 10); !ok {
+		return fmt.Errorf("invalid height: %s", aux.Height)
+	}
+	m.Height = height
+
+	// Convert Phase
+	var phase uint8 = 255
+	for k, v := range phaseToString {
+		if v == aux.Phase {
+			phase = k
+			break
+		}
+	}
+	if phase == 255 {
+		return fmt.Errorf("invalid phase: %s", aux.Phase)
+	}
+	m.Phase = phase
+
+	// Convert TxHash
+	txHash := common.HexToHash(aux.TxHash)
+	m.TxHash = txHash
+
+	// Convert Root
+	root, err := hex.DecodeString(aux.Root)
+	if err != nil {
+		return fmt.Errorf("invalid root: %s", err)
+	}
+	copy(m.Root[:], root)
+
+	// Convert RealRoot
+	realRoot, err := hex.DecodeString(aux.RealRoot)
+	if err != nil {
+		return fmt.Errorf("invalid real root: %s", err)
+	}
+	copy(m.RealRoot[:], realRoot)
+
+	// Convert FromChainId
+	fromChainId := new(big.Int)
+	if _, ok := fromChainId.SetString(aux.FromChainId, 10); !ok {
+		return fmt.Errorf("invalid from chain id: %s", aux.FromChainId)
+	}
+	m.FromChainId = fromChainId
+
+	// Convert FromHeight
+	fromHeight := new(big.Int)
+	if _, ok := fromHeight.SetString(aux.FromHeight, 10); !ok {
+		return fmt.Errorf("invalid from height: %s", aux.FromHeight)
+	}
+	m.FromHeight = fromHeight
+
+	return nil
 }
