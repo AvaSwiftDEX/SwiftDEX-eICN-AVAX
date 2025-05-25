@@ -28,3 +28,5 @@
     ```bash
     ps -ef | grep "go test" | awk '{print $2}' | xargs kill -9
     ```
+
+12. golang中, 自定义 json marshal 时, 必须主要是针对指针类型还是值类型
