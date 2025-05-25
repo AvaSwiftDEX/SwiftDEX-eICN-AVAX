@@ -84,6 +84,23 @@ type ContractSDK struct {
 	eICNAsync         bool
 }
 
+func cmPhaseStr(phase uint8) string {
+	switch phase {
+	case 0:
+		return "PREPARE"
+	case 1:
+		return "RESPONSE"
+	case 2:
+		return "ABORT"
+	case 3:
+		return "COMMIT"
+	case 4:
+		return "ROLLBACK"
+	default:
+		return "UNKNOWN"
+	}
+}
+
 // NewContractSDK 创建一个新的 ContractSDK 实例
 func NewContractSDK(ctx context.Context, url string, chainId *big.Int, address common.Address, privateKey *ecdsa.PrivateKey, eICNAsync bool) *ContractSDK {
 	httpclient, err := ethclientext.Dial(url)
@@ -273,7 +290,7 @@ func (sdk *ContractSDK) DealCounterpartCM(data *CrossData) {
 		sdk.log.WithFields(logrus.Fields{
 			"method": "DealCounterpartCM",
 		}).Info(
-			fmt.Sprintf("CM(chainId: %d, height: %d, expectedHeight: %d, nonce: %d)'s header has been trusted",
+			fmt.Sprintf("CM(chainId: %d, height: %d, expectedHeight: %d, nonce: %d)'s will be transmitted asynchronously",
 				cm.SourceChainId,
 				cm.SourceHeight,
 				cm.ExpectedHeight,
@@ -306,7 +323,7 @@ func (sdk *ContractSDK) CrossReceive(cm *SR2PC.CrossMessage, proof *[]byte) {
 	}).Info(
 		"Received CM and proof data, source chainID: ", cm.SourceChainId,
 		", target chainID: ", cm.TargetChainId,
-		", phase: ", cm.Phase,
+		", phase: ", cmPhaseStr(cm.Phase),
 		", nonce: ", cm.Nonce,
 		", source height: ", cm.SourceHeight,
 		", cm input height: ", cm.CmInputHeight,
@@ -356,34 +373,39 @@ func (sdk *ContractSDK) CrossReceive(cm *SR2PC.CrossMessage, proof *[]byte) {
 }
 
 func (sdk *ContractSDK) WaitCMHashData() {
-	select {
-	case cmHash := <-sdk.WaitCMHashCh:
-		receipt, err := sdk.HttpClient.WaitTransactionReceipt(
-			sdk.ctx,
-			cmHash.Hash,
-			10000*time.Millisecond,
-		)
-		if err != nil {
+	for {
+		select {
+		case cmHash := <-sdk.WaitCMHashCh:
+			receipt, err := sdk.HttpClient.WaitTransactionReceipt(
+				sdk.ctx,
+				cmHash.Hash,
+				10000*time.Millisecond,
+			)
+			if err != nil {
+				sdk.log.WithFields(logrus.Fields{
+					"method": "WaitCMHashData",
+				}).Error(err)
+				return
+			}
+			if receipt.Status == types.ReceiptStatusFailed {
+				sdk.log.WithFields(logrus.Fields{
+					"method": "WaitCMHashData",
+				}).Error("CrossReceive transaction failed: ", cmHash.Hash.Hex())
+				return
+			}
 			sdk.log.WithFields(logrus.Fields{
 				"method": "WaitCMHashData",
-			}).Error(err)
+			}).Debug("CrossReceive transaction success: ", cmHash.Hash.Hex())
+			sdk.ParseRetryEvent(receipt)
+			// TODO: check whether the tx needs to be resend
+			// sdk.InstanceCM.ParseSendCMHash()
+			// boundContract := bind.NewBoundContract(sdk.Address, SR2PC.SR2PCMetaData.GetAbi(), sdk.HttpClient, auth, sdk.InstanceCM.SR2PCCaller)
+			// for _, log := range receipt.Logs {
+			// 	sdk.InstanceCM.C
+			// }
+		case <-sdk.ctx.Done():
 			return
 		}
-		if receipt.Status == types.ReceiptStatusFailed {
-			sdk.log.WithFields(logrus.Fields{
-				"method": "WaitCMHashData",
-			}).Error("CrossReceive transaction failed: ", cmHash.Hash.Hex())
-			return
-		}
-		sdk.ParseRetryEvent(receipt)
-		// TODO: check whether the tx needs to be resend
-		// sdk.InstanceCM.ParseSendCMHash()
-		// boundContract := bind.NewBoundContract(sdk.Address, SR2PC.SR2PCMetaData.GetAbi(), sdk.HttpClient, auth, sdk.InstanceCM.SR2PCCaller)
-		// for _, log := range receipt.Logs {
-		// 	sdk.InstanceCM.C
-		// }
-	case <-sdk.ctx.Done():
-		return
 	}
 }
 
@@ -421,9 +443,11 @@ func (sdk *ContractSDK) SyncHeader(data *HeaderData) {
 	// set auth
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = big.NewInt(0)
-	auth.GasLimit = uint64(4000000)
-	gasPrice := 100
+	auth.GasLimit = uint64(400000000)
+	gasPrice := 10
 	auth.GasPrice = big.NewInt(int64(gasPrice))
+
+	// sdk.HttpClient.EstimateGas()
 
 	// send transaction
 	header := SR2PC.SR2PCBlockHeader{
@@ -447,28 +471,33 @@ func (sdk *ContractSDK) SyncHeader(data *HeaderData) {
 }
 
 func (sdk *ContractSDK) WaitHDRHashData() {
-	select {
-	case hdrHash := <-sdk.WaitHDRHashCh:
-		receipt, err := sdk.HttpClient.WaitTransactionReceipt(
-			sdk.ctx,
-			hdrHash.Hash,
-			10000*time.Millisecond,
-		)
-		if err != nil {
+	for {
+		select {
+		case hdrHash := <-sdk.WaitHDRHashCh:
+			receipt, err := sdk.HttpClient.WaitTransactionReceipt(
+				sdk.ctx,
+				hdrHash.Hash,
+				10000*time.Millisecond,
+			)
+			if err != nil {
+				sdk.log.WithFields(logrus.Fields{
+					"method": "WaitHDRHashData",
+				}).Error(err)
+				return
+			}
+			if receipt.Status == types.ReceiptStatusFailed {
+				sdk.log.WithFields(logrus.Fields{
+					"method": "WaitHDRHashData",
+				}).Error("SyncHeader transaction failed: ", hdrHash.Hash.Hex())
+				return
+			}
 			sdk.log.WithFields(logrus.Fields{
 				"method": "WaitHDRHashData",
-			}).Error(err)
+			}).Debug("SyncHeader transaction success: ", hdrHash.Hash.Hex())
+			sdk.ParseRetryEvent(receipt)
+		case <-sdk.ctx.Done():
 			return
 		}
-		if receipt.Status == types.ReceiptStatusFailed {
-			sdk.log.WithFields(logrus.Fields{
-				"method": "WaitHDRHashData",
-			}).Error("SyncHeader transaction failed: ", hdrHash.Hash.Hex())
-			return
-		}
-		sdk.ParseRetryEvent(receipt)
-	case <-sdk.ctx.Done():
-		return
 	}
 }
 
