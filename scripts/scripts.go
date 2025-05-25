@@ -18,10 +18,13 @@ var (
 	cfgFile string
 
 	// cross-send 命令的标志
-	chainIDsStr   string
-	value         string
-	appIdentifier string
-	appValueIdStr string
+	chainIDsStr       string
+	appIdentifier     string
+	appValueIdStr     string
+	writeConflictRate uint64
+	transactionNumber uint64
+	value             string
+	workerCfgFiles    string
 
 	// init-app-state-values 命令的标志
 	valuesStr string
@@ -258,6 +261,62 @@ func main() {
 	crossSendCmd.MarkFlagRequired("app-identifier")
 	crossSendCmd.MarkFlagRequired("app-value-id")
 
+	crossSendWorkloadCmd := &cobra.Command{
+		Use:   "cross-send-workload",
+		Short: "Execute a cross-chain send workload operation",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.LoadConfig(cfgFile)
+			if err != nil {
+				return fmt.Errorf("failed to load config: %v", err)
+			}
+			// 解析 chain IDs
+			chainIDs, err := parseChainIDs(chainIDsStr)
+			if err != nil {
+				return fmt.Errorf("failed to parse chain IDs: %v", err)
+			}
+
+			// 解析 workerCfgFiles
+			workerCfgFileStrs := strings.Split(workerCfgFiles, ",")
+			if len(workerCfgFileStrs) == 0 {
+				return fmt.Errorf("worker-cfg-files is empty")
+			}
+			workerCfgs := make([]*config.Config, len(workerCfgFileStrs))
+			for i, workerCfgFileStr := range workerCfgFileStrs {
+				workerCfg, err := config.LoadConfig(workerCfgFileStr)
+				if err != nil {
+					return fmt.Errorf("failed to load worker config: %v", err)
+				}
+				workerCfgs[i] = workerCfg
+			}
+
+			// 解析 appIdentifier
+			_ = appIdentifier
+
+			crossSendWorkloadArgs := scripts.CrossSendWorkloadArg{
+				ChainIDs:          chainIDs,
+				AppIdentifier:     appIdentifier,
+				WriteConflictRate: writeConflictRate,
+				TransactionNumber: transactionNumber,
+			}
+
+			ctx := context.Background()
+			if err := scripts.CrossSendWorkload(ctx, cfg, workerCfgs, crossSendWorkloadArgs); err != nil {
+				return fmt.Errorf("cross-send-workload failed: %v", err)
+			}
+			return nil
+		},
+	}
+	crossSendWorkloadCmd.Flags().StringVar(&chainIDsStr, "chain-ids", "", "Comma-separated chain IDs (e.g., '1,2,3')")
+	crossSendWorkloadCmd.Flags().StringVar(&appIdentifier, "app-identifier", "", "App identifier")
+	crossSendWorkloadCmd.Flags().Uint64Var(&writeConflictRate, "write-conflict-rate", 0, "Write conflict rate")
+	crossSendWorkloadCmd.Flags().Uint64Var(&transactionNumber, "transaction-number", 0, "Transaction number")
+	crossSendWorkloadCmd.Flags().StringVar(&workerCfgFiles, "worker-cfg-files", "", "Comma-separated worker config files (e.g., 'worker1.yaml,worker2.yaml')")
+	crossSendWorkloadCmd.MarkFlagRequired("chain-ids")
+	crossSendWorkloadCmd.MarkFlagRequired("app-identifier")
+	crossSendWorkloadCmd.MarkFlagRequired("write-conflict-rate")
+	crossSendWorkloadCmd.MarkFlagRequired("transaction-number")
+	crossSendWorkloadCmd.MarkFlagRequired("worker-cfg-files")
+
 	// RegistEICN 命令
 	registEICNCmd := &cobra.Command{
 		Use:   "regist-eICN",
@@ -287,6 +346,7 @@ func main() {
 		initAppStateValuesCmd,
 		registerAppStateCmd,
 		crossSendCmd,
+		crossSendWorkloadCmd,
 		registEICNCmd,
 	)
 
