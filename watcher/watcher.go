@@ -270,11 +270,12 @@ func (wc *Watcher) MonitorEvent() {
 			return
 		case vLog := <-logs:
 			wc.log.Info(fmt.Sprintf("find a new log(SendCMHash), cmHash: %s, status: %d", hex.EncodeToString(vLog.CmHash[:]), vLog.Status))
-			cm, err := instance.GetCMByHash(nil, vLog.CmHash)
-			if err != nil {
-				wc.log.WithError(err).Error("failed to get CM by hash")
-				continue
-			}
+			cm := vLog.Cm
+			// cm, err := instance.GetCMByHash(nil, vLog.CmHash)
+			// if err != nil {
+			// 	wc.log.WithError(err).Error("failed to get CM by hash")
+			// 	continue
+			// }
 			cmBytes, err := json.Marshal(cm)
 			if err != nil {
 				wc.log.WithError(err).Error("failed to marshal CM")
