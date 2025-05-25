@@ -55,7 +55,7 @@ func InitAppStateValues(ctx context.Context, config *config.Config, args InitApp
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = big.NewInt(0)
-	auth.GasLimit = uint64(6000000)
+	auth.GasLimit = uint64(600000000)
 	fmt.Println("gas tip: ", auth.GasLimit)
 	gasPrice := 10
 	auth.GasPrice = big.NewInt(int64(gasPrice))
@@ -76,7 +76,8 @@ func InitAppStateValues(ctx context.Context, config *config.Config, args InitApp
 		return err
 	}
 	if receipt.Status == types.ReceiptStatusFailed {
-		return errors.New("init app state values receipt failed")
+		return errors.New("init app state values receipt failed, txhash: " + tx.Hash().Hex())
 	}
+	fmt.Println("init app state values receipt success, txhash: ", tx.Hash().Hex(), "gas used: ", receipt.GasUsed)
 	return nil
 }
