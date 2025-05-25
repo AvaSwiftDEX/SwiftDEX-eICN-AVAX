@@ -301,13 +301,13 @@ func (wc *Watcher) MonitorEvent() {
 
 func (wc *Watcher) GetRoot(instance *SR2PC.SR2PC, height *big.Int) (common.Hash, error) {
 	// TODO: get root from instance
-	hash := sha256.Sum256([]byte(fmt.Sprintf("root of block height: %d\n", height)))
+	hash := sha256.Sum256([]byte(fmt.Sprintf("root of block height on chain: %d\n chainId: %d", height, wc.chainId)))
 	return hash, nil
 }
 
 func (wc *Watcher) GetProof(instance *SR2PC.SR2PC, cm *SR2PC.CrossMessage) ([]byte, error) {
 	// TODO: get proof from instance
-	hash := sha256.Sum256([]byte(fmt.Sprintf("root of block height: %d\n", cm.ExpectedHeight)))
+	hash := sha256.Sum256([]byte(fmt.Sprintf("root of block height on chain: %d\n chainId: %d", cm.ExpectedHeight, wc.chainId)))
 	proof := hash[:]
 	return proof, nil
 }
