@@ -93,4 +93,8 @@ echo ">>> >>> >>> start regist"
 # sleep 3s
 # ./scripts/cross_send.sh --chain-ids="2,3" --value="100" --app-identifier="State" --app-value-id="0" --config=evaluation/configs/config1.yaml
 
+# echo ">>> >>> >>> start cross send workload"
+# sleep 3s
+# ./scripts/cross_send_workload.sh --chain-ids="2,3" --app-identifier="State" --write-conflict-rate=0 --transaction-number=5 --worker-cfg-files=evaluation/configs/config2.yaml,evaluation/configs/config3.yaml --config=evaluation/configs/config1.yaml
+
 echo ">>> >>> >>> Finished!"
