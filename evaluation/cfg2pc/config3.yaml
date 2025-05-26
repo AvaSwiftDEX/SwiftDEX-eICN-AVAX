@@ -1,0 +1,20 @@
+http:
+    port: 8082
+    host: 127.0.0.1
+    base_url: http://127.0.0.1:8082
+chain:
+    id: "3"
+    http_url: http://127.0.0.1:8565
+    ws_url: ws://127.0.0.1:8566
+    key_file: node/keystore/UTC--2025-02-08T06-12-23.376721660Z--a8a410a56f93e14fb5a71f5968958851915b6909
+    key_hex: c45ba5d6de0e502aefd23c98b40a2c9018e2e0286dde4fdb542ded619cefc8bd
+    use_file: true
+    address: 0xac6f1882c3bc164da455b89e956d2e14f327a158
+    expected_trust_delta: 1
+    lib_filter_address: "0x0000000000000000000000000000000000000000"
+    app_state_address: 0xac38ee5eed9d40d242a875e7cf0e9e02d0222c2e
+    app_state_name: State
+collector:
+    url: http://127.0.0.1:8090
+eICN:
+    async: false
