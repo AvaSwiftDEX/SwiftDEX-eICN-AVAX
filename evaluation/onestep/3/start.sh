@@ -46,7 +46,7 @@ if [ $? -eq 2 ]; then
 fi
 
 # echo ">>> >>> >>> start analysis"
-# screen -L -S session_analysis -dm ./analysis/run_analysis.sh 1 test evaluation/configs/config1.yaml,evaluation/configs/config2.yaml,evaluation/configs/config3.yaml
+# screen -L -S session_analysis -dm ./analysis/run_analysis.sh 1 test evaluation/configs/config1.yaml,evaluation/configs/config2.yaml,evaluation/configs/config3.yaml false
 # sleep 2s
 # check_session "session_analysis"
 
