@@ -67,9 +67,13 @@ avg = lambda x: avglist(list(x))
 class PhaseLatencyMetric:
     def __init__(self):
         self.m_issue_2_w_ucf_p = 0
+        self.m_issue_2_w_cf_p = 0
         self.w_ucf_p_2_m_cf_recv = 0
         self.w_ucf_p_2_m_cf_c = 0
         self.w_ucf_p_2_m_cf_r = 0
+        self.w_cf_p_2_m_cf_recv = 0
+        self.w_cf_p_2_m_cf_c = 0
+        self.w_cf_p_2_m_cf_r = 0
         self.m_cf_c_2_w_cf_c = 0
         self.m_cf_r_2_w_cf_r = 0
         self.overall = 0
@@ -105,9 +109,13 @@ class TransactionMetric:
     
     def calc_EachPhaseLatency(self):
         self.latencyMetric.m_issue_2_w_ucf_p = avg(value[0]-self.MasterIssue[0] for value in self.WorkerPrepareUnconfirm.values() if int(value[0]) != 0)
+        self.latencyMetric.m_issue_2_w_cf_p = avg(value[0]-self.MasterIssue[0] for value in self.WorkerPrepareConfirm.values() if int(value[0]) != 0)
         self.latencyMetric.w_ucf_p_2_m_cf_recv = avg(self.MasterReceiveConfirm[key][0]-value[0] for key, value in self.WorkerPrepareUnconfirm.items() if int(value[0]) != 0 and key in self.MasterReceiveConfirm)
         self.latencyMetric.w_ucf_p_2_m_cf_c = avg(self.MasterCommitConfirm[0]-value[0] for value in self.WorkerPrepareUnconfirm.values() if int(value[0]) != 0 and self.MasterCommitConfirm[0] != 0)
         self.latencyMetric.w_ucf_p_2_m_cf_r = avg(self.MasterRollbackConfirm[0]-value[0] for value in self.WorkerPrepareUnconfirm.values() if int(value[0]) != 0 and self.MasterRollbackConfirm[0] != 0)
+        self.latencyMetric.w_cf_p_2_m_cf_recv = avg(self.MasterReceiveConfirm[key][0]-value[0] for key, value in self.WorkerPrepareConfirm.items() if int(value[0]) != 0 and key in self.MasterReceiveConfirm)
+        self.latencyMetric.w_cf_p_2_m_cf_c = avg(self.MasterCommitConfirm[0]-value[0] for value in self.WorkerPrepareConfirm.values() if int(value[0]) != 0 and self.MasterCommitConfirm[0] != 0)
+        self.latencyMetric.w_cf_p_2_m_cf_r = avg(self.MasterRollbackConfirm[0]-value[0] for value in self.WorkerPrepareConfirm.values() if int(value[0]) != 0 and self.MasterRollbackConfirm[0] != 0)
         self.latencyMetric.m_cf_c_2_w_cf_c = avg(value[0] - self.MasterCommitConfirm[0] for value in self.WorkerCommitConfirm.values() if int(value[0]) != 0 and self.MasterCommitConfirm[0] != 0)
         self.latencyMetric.m_cf_r_2_w_cf_r = avg(value[0] - self.MasterRollbackConfirm[0] for value in self.WorkerRollbackConfirm.values() if int(value[0]) != 0 and self.MasterRollbackConfirm[0] != 0)
 
@@ -206,9 +214,13 @@ class TransactionMetric:
             'latency': {
                 'overall': self.latencyMetric.overall,
                 'm_issue_2_w_ucf_p': self.latencyMetric.m_issue_2_w_ucf_p,
+                'm_issue_2_w_cf_p': self.latencyMetric.m_issue_2_w_cf_p,
                 'w_ucf_p_2_m_cf_recv': self.latencyMetric.w_ucf_p_2_m_cf_recv,
                 'w_ucf_p_2_m_cf_c': self.latencyMetric.w_ucf_p_2_m_cf_c,
                 'w_ucf_p_2_m_cf_r': self.latencyMetric.w_ucf_p_2_m_cf_r,
+                'w_cf_p_2_m_cf_recv': self.latencyMetric.w_cf_p_2_m_cf_recv,
+                'w_cf_p_2_m_cf_c': self.latencyMetric.w_cf_p_2_m_cf_c,
+                'w_cf_p_2_m_cf_r': self.latencyMetric.w_cf_p_2_m_cf_r,
                 'm_cf_c_2_w_cf_c': self.latencyMetric.m_cf_c_2_w_cf_c,
                 'm_cf_r_2_w_cf_r': self.latencyMetric.m_cf_r_2_w_cf_r,
             },
