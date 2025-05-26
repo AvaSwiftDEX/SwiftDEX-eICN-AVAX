@@ -16,7 +16,7 @@ check_session() {
 DEBUG=${1:-false}
 
 # Get current directory
-SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)/c
 
 
 echo ">>> >>> >>> start geth"
