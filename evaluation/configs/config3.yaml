@@ -10,7 +10,7 @@ chain:
     key_hex: c45ba5d6de0e502aefd23c98b40a2c9018e2e0286dde4fdb542ded619cefc8bd
     use_file: true
     address: 0xac6f1882c3bc164da455b89e956d2e14f327a158
-    expected_trust_delta: 1
+    expected_trust_delta: 3
     lib_filter_address: "0x0000000000000000000000000000000000000000"
     app_state_address: 0xac38ee5eed9d40d242a875e7cf0e9e02d0222c2e
     app_state_name: State
