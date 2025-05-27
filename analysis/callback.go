@@ -210,6 +210,7 @@ func (aly *Analyzer) AnalysisMetrics(data metrics.MetricsData) {
 		if finished == aly.transHashStorage[transactionHash].WorkerChainSize {
 			aly.transHashStorage[transactionHash].Finished = true
 			aly.finishedNumber++
+			fmt.Printf("Transaction finished (number: %d / %d): %s \n", aly.finishedNumber, aly.totalNumber, transactionHash)
 		}
 	}
 }
