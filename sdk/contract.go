@@ -526,6 +526,17 @@ func (sdk *ContractSDK) WaitHDRHashData() {
 	}
 }
 
+func (sdk *ContractSDK) ParseDebugEvent(receipt *types.Receipt) {
+	for _, log := range receipt.Logs {
+		eventDebug, err := sdk.InstanceCM.ParseDebug(*log)
+		if err == nil {
+			sdk.log.WithFields(logrus.Fields{
+				"method": "ParseDebugEvent",
+			}).Debug("Debug event: ", eventDebug.Msg)
+		}
+	}
+}
+
 func (sdk *ContractSDK) cacheRetryCM(lockHashStr string, identifier string, cm *SR2PC.CrossMessage, root *common.Hash) {
 	if _, ok := sdk.RetryCache[lockHashStr]; !ok {
 		sdk.RetryCache[lockHashStr] = NewQueue()
