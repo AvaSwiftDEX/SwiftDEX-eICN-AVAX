@@ -518,7 +518,97 @@ func (sdk *ContractSDK) WaitHDRHashData() {
 			}
 			sdk.log.WithFields(logrus.Fields{
 				"method": "WaitHDRHashData",
-			}).Debug("SyncHeader transaction success: ", hdrHash.Hash.Hex())
+
+func (sdk *ContractSDK) CrossRetry(identifier string, cm *SR2PC.CrossMessage, root *common.Hash, unlockHashStr string) {
+	sdk.mutex.Lock()
+	defer sdk.mutex.Unlock()
+
+	if cm.TargetChainId.Cmp(sdk.ChainId) != 0 {
+		sdk.log.WithFields(logrus.Fields{
+			"method": "CrossReceive",
+		}).Error("chain id not match")
+		return
+	}
+
+	sdk.log.WithFields(logrus.Fields{
+		"method": "CrossRetry",
+	}).Info(fmt.Sprintf("CrossRetry for CM(chainId: %d, targetChainId: %d, height: %d, expectedHeight: %d, nonce: %d), lockHash: %s",
+		cm.SourceChainId,
+		cm.TargetChainId,
+		cm.SourceHeight,
+		cm.ExpectedHeight,
+		cm.Nonce,
+		unlockHashStr,
+	))
+
+	// get nonce
+	fromAddress := crypto.PubkeyToAddress(*sdk.PublicKey)
+	nonce, err := sdk.HttpClient.PendingNonceAt(sdk.ctx, fromAddress)
+	if err != nil {
+		sdk.log.WithFields(logrus.Fields{
+			"method": "CrossReceive",
+		}).Error(err)
+		return
+	}
+
+	// get auth
+	auth, err := bind.NewKeyedTransactorWithChainID(sdk.PrivateKey, sdk.ChainNativeId)
+	if err != nil {
+		sdk.log.WithFields(logrus.Fields{
+			"method": "CrossRetry",
+		}).Error(err)
+		return
+	}
+
+	// set auth
+	auth.Nonce = big.NewInt(int64(nonce))
+	auth.Value = big.NewInt(0)
+	auth.GasLimit = uint64(4000000)
+	gasPrice := 100
+	auth.GasPrice = big.NewInt(int64(gasPrice))
+
+	// send transaction
+	tx, err := sdk.InstanceCM.CrossRetry(auth, identifier, *cm, *root)
+	if err != nil {
+		sdk.log.WithFields(logrus.Fields{
+			"method": "CrossRetry",
+		}).Error(err)
+		return
+	}
+	sdk.log.WithFields(logrus.Fields{
+		"method": "CrossRetry",
+	}).Debug("txHash: ", tx.Hash().Hex())
+
+	// send hash to channel
+	hash := tx.Hash()
+	sdk.WaitRetryHashCh <- &CMHashData{Hash: hash, CrossData: nil}
+}
+
+func (sdk *ContractSDK) WaitRetryHashData() {
+	for {
+		select {
+		case cmHash := <-sdk.WaitRetryHashCh:
+			receipt, err := sdk.HttpClient.WaitTransactionReceipt(
+				sdk.ctx,
+				cmHash.Hash,
+				10000*time.Millisecond,
+			)
+			if err != nil {
+				sdk.log.WithFields(logrus.Fields{
+					"method": "WaitRetryHashData",
+				}).Error(err)
+				return
+			}
+			if receipt.Status == types.ReceiptStatusFailed {
+				sdk.log.WithFields(logrus.Fields{
+					"method": "WaitRetryHashData",
+				}).Error("CrossRetry transaction failed: ", cmHash.Hash.Hex())
+				// sdk.ctx.Done()
+				return
+			}
+			sdk.log.WithFields(logrus.Fields{
+				"method": "WaitRetryHashData",
+			}).Debug("CrossRetry transaction success: ", cmHash.Hash.Hex())
 			sdk.ParseRetryEvent(receipt)
 		case <-sdk.ctx.Done():
 			return
