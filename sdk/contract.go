@@ -418,6 +418,7 @@ func (sdk *ContractSDK) WaitCMHashData() {
 				sdk.log.WithFields(logrus.Fields{
 					"method": "WaitCMHashData",
 				}).Error("CrossReceive transaction failed: ", cmHash.Hash.Hex())
+				// sdk.ctx.Done()
 				return
 			}
 			sdk.log.WithFields(logrus.Fields{
