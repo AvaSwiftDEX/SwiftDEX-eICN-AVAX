@@ -73,12 +73,15 @@ type ContractSDK struct {
 	Address           common.Address
 	InstanceCM        *SR2PC.SR2PC
 	InstanceHDR       *SR2PC.SR2PC
-	Serv2SDK_CM       chan *CrossData       // 容量为1024的通道
-	Serv2SDK_HDR      chan *HeaderData      // 容量为1024的通道
-	WaitCMHashCh      chan *CMHashData      // 容量为1024的通道
-	WaitHDRHashCh     chan *HDRHashData     // 容量为1024的通道
-	WatchSyncHeaderCh chan *EventSyncHeader // 容量为1024的通道
-	Stop              chan struct{}         // 停止信号通道
+	Serv2SDK_CM       chan *CrossData            // 容量为1024的通道
+	Serv2SDK_HDR      chan *HeaderData           // 容量为1024的通道
+	WaitCMHashCh      chan *CMHashData           // 容量为1024的通道
+	WaitHDRHashCh     chan *HDRHashData          // 容量为1024的通道
+	WaitRetryHashCh   chan *CMHashData           // 容量为1024的通道
+	WatchSyncHeaderCh chan *EventSyncHeader      // 容量为1024的通道
+	UnlockCh          chan *UnlockShadowLockData // 容量为1024的通道
+	RetryCache        map[string]*Queue          // 存储待 retry 的跨链消息
+	Stop              chan struct{}              // 停止信号通道
 	mutex             sync.Mutex
 	log               *logrus.Entry
 	eICNAsync         bool
@@ -151,11 +154,14 @@ func NewContractSDK(ctx context.Context, url string, chainId *big.Int, address c
 		Serv2SDK_HDR:      make(chan *HeaderData, 1024),
 		WaitCMHashCh:      make(chan *CMHashData, 1024),
 		WaitHDRHashCh:     make(chan *HDRHashData, 1024),
+		WaitRetryHashCh:   make(chan *CMHashData, 1024),
 		WatchSyncHeaderCh: make(chan *EventSyncHeader, 1024),
+		RetryCache:        make(map[string]*Queue),
 		Stop:              make(chan struct{}),
 		mutex:             sync.Mutex{},
 		log:               logger.NewComponent("ContractSDK"),
 		eICNAsync:         eICNAsync,
+		UnlockCh:          make(chan *UnlockShadowLockData, 1024),
 	}
 }
 
