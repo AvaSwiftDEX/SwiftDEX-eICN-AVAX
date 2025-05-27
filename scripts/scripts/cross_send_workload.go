@@ -167,11 +167,11 @@ func CrossSendWorkload(ctx context.Context, config *config.Config, workerCfgs []
 		if err != nil {
 			return err
 		}
+		time.Sleep(1000 * time.Millisecond)
 
 		// append tx hash
 		txHashes = append(txHashes, tx.Hash())
 	}
-	
 
 	blockHeights := make(map[uint64]struct{})
 	// wait tx
