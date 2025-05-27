@@ -514,10 +514,20 @@ func (sdk *ContractSDK) WaitHDRHashData() {
 				sdk.log.WithFields(logrus.Fields{
 					"method": "WaitHDRHashData",
 				}).Error("SyncHeader transaction failed: ", hdrHash.Hash.Hex())
+				// sdk.ctx.Done()
 				return
 			}
 			sdk.log.WithFields(logrus.Fields{
 				"method": "WaitHDRHashData",
+			}).Debug("SyncHeader transaction success: ", hdrHash.Hash.Hex(), " chainId: ", hdrHash.HdrData.chainId, " height: ", hdrHash.HdrData.number)
+			sdk.ParseRetryEvent(receipt)
+			sdk.ParseUnlockEvent(receipt)
+			sdk.ParseDebugEvent(receipt)
+		case <-sdk.ctx.Done():
+			return
+		}
+	}
+}
 
 func (sdk *ContractSDK) CrossRetry(identifier string, cm *SR2PC.CrossMessage, root *common.Hash, unlockHashStr string) {
 	sdk.mutex.Lock()
