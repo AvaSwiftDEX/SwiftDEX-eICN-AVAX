@@ -190,6 +190,8 @@ func (sdk *ContractSDK) Run() {
 	go sdk.WaitCMHashData()
 	go sdk.WaitHDRHashData()
 	go sdk.WatchSyncHeaderEvent()
+	go sdk.WaitRetryHashData()
+	go sdk.RetryUponUnlock()
 }
 
 func (sdk *ContractSDK) ListenDataFromServer() {
