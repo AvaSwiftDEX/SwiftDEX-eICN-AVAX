@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"strings"
 	"sync"
 	"time"
 
@@ -57,6 +58,24 @@ type EventSyncHeader struct {
 type CacheData struct {
 	CrossMessage *SR2PC.CrossMessage
 	Proof        *[]byte
+}
+
+type RetryCacheData struct {
+	Identifier   string
+	CrossMessage *SR2PC.CrossMessage
+	Root         *common.Hash
+}
+
+const (
+	RETRYID_RetryPrepareConfirmCM   = "RetryPrepareConfirmCM"
+	RETRYID_RetryPrepareUnconfirmCM = "RetryPrepareUnconfirmCM"
+	RETRYID_RetryRollbackConfirmCM  = "RetryRollbackConfirmCM"
+)
+
+type UnlockShadowLockData struct {
+	ChainId *big.Int
+	Height  *big.Int
+	Hash    common.Hash
 }
 
 // ContractSDK 结构体
