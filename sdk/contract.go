@@ -526,6 +526,55 @@ func (sdk *ContractSDK) WaitHDRHashData() {
 	}
 }
 
+func (sdk *ContractSDK) RetryUponUnlock() {
+	for {
+		select {
+		case <-sdk.ctx.Done():
+			return
+		case unlock := <-sdk.UnlockCh:
+			unlockHashStr := hex.EncodeToString(unlock.Hash[:])
+			if _, ok := sdk.RetryCache[unlockHashStr]; !ok {
+				continue
+			} else {
+				for {
+					rawData, ok := sdk.RetryCache[unlockHashStr].Dequeue()
+					if !ok {
+						break
+					}
+					retryData := rawData.(*RetryCacheData)
+					sdk.CrossRetry(retryData.Identifier, retryData.CrossMessage, retryData.Root, unlockHashStr)
+				}
+			}
+
+		}
+	}
+}
+
+func (sdk *ContractSDK) ParseUnlockEvent(receipt *types.Receipt) {
+	sdk.log.WithFields(logrus.Fields{
+		"method": "ParseUnlockEvent",
+	}).Debug("CacheRetryCM: ", func() string {
+		keys := make([]string, 0, len(sdk.RetryCache))
+		for k := range sdk.RetryCache {
+			keys = append(keys, fmt.Sprintf("lockHash: %s, size: %d", k, sdk.RetryCache[k].Size()))
+		}
+		return strings.Join(keys, ", ")
+	}())
+	for _, log := range receipt.Logs {
+		eventRPC, err := sdk.InstanceCM.ParseUnlockShadowLock(*log)
+		if err == nil {
+			sdk.log.WithFields(logrus.Fields{
+				"method": "ParseUnlockEvent",
+			}).Info(fmt.Sprintf("UnlockShadowLock event SDL.Hash: %s, SDL.ChainId: %d, SDL.Height: %d", hex.EncodeToString(eventRPC.LockHash[:]), eventRPC.ChainId, eventRPC.Height))
+			sdk.UnlockCh <- &UnlockShadowLockData{
+				ChainId: eventRPC.ChainId,
+				Height:  eventRPC.Height,
+				Hash:    eventRPC.LockHash,
+			}
+		}
+	}
+}
+
 func (sdk *ContractSDK) ParseDebugEvent(receipt *types.Receipt) {
 	for _, log := range receipt.Logs {
 		eventDebug, err := sdk.InstanceCM.ParseDebug(*log)
