@@ -526,27 +526,48 @@ func (sdk *ContractSDK) WaitHDRHashData() {
 	}
 }
 
+func (sdk *ContractSDK) cacheRetryCM(lockHashStr string, identifier string, cm *SR2PC.CrossMessage, root *common.Hash) {
+	if _, ok := sdk.RetryCache[lockHashStr]; !ok {
+		sdk.RetryCache[lockHashStr] = NewQueue()
+	}
+	sdk.RetryCache[lockHashStr].Enqueue(
+		&RetryCacheData{
+			Identifier:   identifier,
+			CrossMessage: cm,
+			Root:         root,
+		},
+	)
+}
+
 func (sdk *ContractSDK) ParseRetryEvent(receipt *types.Receipt) {
 	for _, log := range receipt.Logs {
 		eventRPC, err := sdk.InstanceCM.ParseRetryPrepareConfirmCM(*log)
 		if err == nil {
+			lockHashStr := hex.EncodeToString(eventRPC.LockHash[:])
 			sdk.log.WithFields(logrus.Fields{
 				"method": "ParseRetryEvent",
-			}).Info("RetryPrepareConfirmCM event: ", hex.EncodeToString(eventRPC.CmHash[:]))
+			}).Info(fmt.Sprintf("RetryPrepareConfirmCM event: %s", lockHashStr))
+			sdk.cacheRetryCM(lockHashStr, RETRYID_RetryPrepareConfirmCM, &eventRPC.Cm, &common.Hash{})
 			break
 		}
 		eventRPU, err := sdk.InstanceCM.ParseRetryPrepareUnconfirmCM(*log)
 		if err == nil {
+			lockHashStr := hex.EncodeToString(eventRPU.LockHash[:])
 			sdk.log.WithFields(logrus.Fields{
 				"method": "ParseRetryEvent",
-			}).Info("RetryPrepareUnconfirmCM event: ", hex.EncodeToString(eventRPU.CmHash[:]))
+			}).Info("RetryPrepareUnconfirmCM event: ", lockHashStr)
+			tmpRoot := common.Hash{}
+			tmpRoot.SetBytes(eventRPU.Root[:])
+			sdk.cacheRetryCM(lockHashStr, RETRYID_RetryPrepareUnconfirmCM, &eventRPU.Cm, &tmpRoot)
 			break
 		}
 		eventRRC, err := sdk.InstanceCM.ParseRetryRollbackConfirmCM(*log)
 		if err == nil {
+			lockHashStr := hex.EncodeToString(eventRRC.LockHash[:])
 			sdk.log.WithFields(logrus.Fields{
 				"method": "ParseRetryEvent",
-			}).Info("RetryRollbackConfirmCM event: ", hex.EncodeToString(eventRRC.CmHash[:]))
+			}).Info("RetryRollbackConfirmCM event: ", lockHashStr)
+			sdk.cacheRetryCM(lockHashStr, RETRYID_RetryRollbackConfirmCM, &eventRRC.Cm, &common.Hash{})
 			break
 		}
 		// eventError, err := sdk.InstanceCM.ParseError(*log)
