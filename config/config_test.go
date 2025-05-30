@@ -23,7 +23,6 @@ func TestLoadConfig(t *testing.T) {
 	// 验证默认值
 	assert.Equal(t, uint16(8080), config.HTTP.Port)
 	assert.Equal(t, "127.0.0.1", config.HTTP.Host)
-	assert.Equal(t, "http://127.0.0.1:8080", config.HTTP.BaseURL)
 	assert.Equal(t, big.NewInt(1), config.Chain.ID)
 	assert.Equal(t, "http://127.0.0.1:8545", config.Chain.HTTPURL)
 	assert.Equal(t, "ws://127.0.0.1:8546", config.Chain.WSURL)
@@ -64,7 +63,6 @@ func TestLoadConfigWithKeyFile(t *testing.T) {
 	config := &Config{}
 	config.HTTP.Port = 8080
 	config.HTTP.Host = "127.0.0.1"
-	config.HTTP.BaseURL = "http://127.0.0.1:8080"
 	config.Chain.ID = big.NewInt(1)
 	config.Chain.HTTPURL = "http://127.0.0.1:8545"
 	config.Chain.WSURL = "ws://127.0.0.1:8546"
@@ -129,4 +127,4 @@ func TestReadPrivateKey(t *testing.T) {
 
 	_, err = readPrivateKeyFromFile(invalidKeyPath)
 	assert.Error(t, err)
-} 
+}

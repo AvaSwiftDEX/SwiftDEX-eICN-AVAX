@@ -15,9 +15,8 @@ import (
 // Config 定义配置结构
 type Config struct {
 	HTTP struct {
-		Port    uint16 `yaml:"port"`
-		Host    string `yaml:"host"`
-		BaseURL string `yaml:"base_url"`
+		Port uint16 `yaml:"port"`
+		Host string `yaml:"host"`
 	} `yaml:"http"`
 
 	Chain struct {
@@ -113,7 +112,6 @@ func createDefaultConfig(filename string) (*Config, error) {
 	// 设置默认值
 	config.HTTP.Port = 8080
 	config.HTTP.Host = "127.0.0.1"
-	config.HTTP.BaseURL = "http://127.0.0.1:8080"
 
 	config.Chain.ID = big.NewInt(1)
 	config.Chain.HTTPURL = "http://127.0.0.1:8545"
