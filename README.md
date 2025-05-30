@@ -146,13 +146,26 @@ To achieve auto-mining in avalanche local-net, we also start a background proces
 bash evaluation/onestep/3/create_avalanche.sh
 ```
 
-#### deploy c-chains
+#### deploy C-Chains
+
+In this script, we:
+
+- deploy a avalanche C-Chain for each config
+- update config with C-Chain's BlockchainId by querying "platform.getBlockchains" api of P-Chain
+- start background process to send transaction continuously for auto-mining
 
 ```shell
 bash evaluation/onestep/3/start_avalanche.sh
 ```
 
 #### contracts, relayers and metrics collector
+
+In this script, we:
+
+- compile, deploy and initilize contracts by solc, abigen and ethClient
+- start metrics collector for collectiong system metrics
+- start a customized relayer for each C-Chain
+- build a mini-network for all C-Chains' relayers
 
 ```shell
 bash evaluation/onestep/3/start.sh 
