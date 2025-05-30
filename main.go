@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"sync"
@@ -23,6 +24,8 @@ func main() {
 	logFile := flag.String("log", "", "path to log file")
 	debugLevel := flag.Bool("debug", true, "debug level")
 	flag.Parse()
+
+	fmt.Println("configPath: ", *configPath)
 
 	// 初始化日志
 	logger.InitLogger(*logFile)
@@ -47,6 +50,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	fmt.Println("cfg: ", cfg)
+
 	// address, err := scripts.Deploy(ctx, cfg)
 	// if err != nil {
 	// 	panic(err)
@@ -61,7 +66,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println("cfg.Chain.HTTPURL: ", cfg.Chain.HTTPURL)
 	contractSDK := sdk.NewContractSDK(ctx, cfg.Chain.HTTPURL, cfg.Chain.ID, cfg.Chain.Address, privateKey, cfg.EICN.Async)
+	fmt.Println("contractSDK: ", contractSDK.Address)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -75,6 +82,7 @@ func main() {
 
 	// run server
 	transmitterServer := server.NewTransmitter(cfg.HTTP.Host, cfg.HTTP.Port, &wg, contractSDK, storage)
+	fmt.Println("transmitterServer: ")
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -84,6 +92,7 @@ func main() {
 
 	// create transmitter client
 	transmitterClient := client.NewTransmitterClient(storage)
+	fmt.Println("transmitterClient: ")
 
 	// run watcher
 	watcher, err := watcher.NewWatcher(
@@ -99,6 +108,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println("watcher: ")
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
