@@ -122,7 +122,7 @@ func main() {
 			_ = os.RemoveAll("SR2PC/lib")
 
 			filePath := "SR2PC/lib"
-			content := []byte(fmt.Sprintf("../SuperRunner-Contracts/contracts/2pc-master/lib/Filter.sol:Filter=%s", address.Hex()))
+			content := []byte(fmt.Sprintf("../SwiftDEX-Contracts/contracts/2pc-master/lib/Filter.sol:Filter=%s", address.Hex()))
 			fmt.Println("content:", string(content))
 			if err := os.WriteFile(filePath, content, 0644); err != nil {
 				return fmt.Errorf("failed to write to file: %v", err)

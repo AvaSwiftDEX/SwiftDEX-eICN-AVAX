@@ -7,15 +7,15 @@ params="$@"
 
 mkdir -p SR2PC/Filter
 
-solc --abi --bin --overwrite --optimize --optimize-runs 200 -o output ../SuperRunner-Contracts/contracts/2pc-master/lib/Filter.sol --allow-paths .
+solc --abi --bin --overwrite --optimize --optimize-runs 200 -o output ../SwiftDEX-Contracts/contracts/2pc-master/lib/Filter.sol --allow-paths .
 abigen --bin=output/Filter.bin --abi=output/Filter.abi --pkg=Filter --out=SR2PC/Filter/Filter.go
 go run scripts/scripts.go deploy-lib-Filter $params
 
-solc --abi --bin --overwrite --optimize --optimize-runs 200 -o output ../SuperRunner-Contracts/contracts/2pc-master/SR2PC.sol --allow-paths . --libraries SR2PC/lib
+solc --abi --bin --overwrite --optimize --optimize-runs 200 -o output ../SwiftDEX-Contracts/contracts/2pc-master/SR2PC.sol --allow-paths . --libraries SR2PC/lib
 abigen --bin=output/SR2PC.bin --abi=output/SR2PC.abi --pkg=SR2PC --out=SR2PC/SR2PC.go
 go run scripts/scripts.go deploy $params
 
-solc --abi --bin --overwrite --optimize --optimize-runs 200 -o output ../SuperRunner-Contracts/contracts/2pc-master/app/State.sol --allow-paths .
+solc --abi --bin --overwrite --optimize --optimize-runs 200 -o output ../SwiftDEX-Contracts/contracts/2pc-master/app/State.sol --allow-paths .
 abigen --bin=output/State.bin --abi=output/State.abi --pkg=AppState --out=SR2PC/AppState/State.go
 go run scripts/scripts.go deploy-app-State $params
 
