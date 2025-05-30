@@ -15,26 +15,7 @@ check_session() {
 # Get debug parameter with default value false
 DEBUG=${1:-false}
 
-echo ">>> >>> >>> start geth"
-screen -S session_geth_1 -dm ../SuperRunner-go-ethereum/build/bin/geth --dev --dev.period 3 --dev.gaslimit 115000000000 --keystore ./node/keystore --allow-insecure-unlock --http --http.api eth,web3,net,miner,txpool,admin --ws --ws.api eth,web3,net --http.port 8545 --ws.port 8546
-screen -S session_geth_2 -dm ../SuperRunner-go-ethereum/build/bin/geth --dev --dev.period 3 --dev.gaslimit 115000000000 --keystore ./node/keystore --allow-insecure-unlock --http --http.api eth,web3,net,miner,txpool,admin --ws --ws.api eth,web3,net --http.port 8555 --ws.port 8556
-screen -S session_geth_3 -dm ../SuperRunner-go-ethereum/build/bin/geth --dev --dev.period 3 --dev.gaslimit 115000000000 --keystore ./node/keystore --allow-insecure-unlock --http --http.api eth,web3,net,miner,txpool,admin --ws --ws.api eth,web3,net --http.port 8565 --ws.port 8566
-sleep 3s
-check_session "session_geth_1"
-if [ $? -eq 2 ]; then
-    echo "Terminating script due to missing session: session_geth_1"
-    exit 1
-fi
-check_session "session_geth_2"
-if [ $? -eq 2 ]; then
-    echo "Terminating script due to missing session: session_geth_2"
-    exit 1
-fi
-check_session "session_geth_3"
-if [ $? -eq 2 ]; then
-    echo "Terminating script due to missing session: session_geth_3"
-    exit 1
-fi
+# bash ./evaluation/onestep/3/start_avalanche.sh
 
 echo ">>> >>> >>> start metrics"
 screen -L -S session_metrics -dm ./metrics/run_metrics.sh
