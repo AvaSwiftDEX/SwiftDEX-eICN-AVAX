@@ -19,15 +19,15 @@ A figure (finally to do it)
 
 <!-- <u>**Slow Interoperations:**</u> -->
 
-### Motivation: Slow Interoperation and Why
+### Motivation: Slow Interoperation, but Why
 
-Traditional cross-chain protocols (Avalanche, Chainlink, Cosmos, etc.) face the High-Latency bottleneck.
+Traditional cross-chain protocols (Avalanche, Chainlink, Cosmos, etc.) face the <u>*High-Latency*</u> bottleneck.
 
 <!-- <u>**Why Slow:**</u> -->
 
 <!-- ### Why Slow: -->
 
-It is a fact that, only when the cross-chain message is finalized (or with a extreme-high probability) on the source chain, the target chain could accept it as a valid message by verification mechnisms (like Avalanche's BLS-Aggregation, IBC's Light Client, and Zero-Knowledge, etc.). The finalization process spends at least one consensus epoch (more epochs for Bitcoin, Ethereum2.0, etc.). Essentially, message finalization means that the message could be verified by outside entities (also called Verifier). Missing finalization means missing security guaranteed by underlying decentralized blockchains. **In one word, the message is first finalized, then transmitted and finally verified.** It is the traditional cross-chain protocol abstract paradigm.
+It is a fact that, only when the cross-chain message is finalized (or with a extreme-high probability) on the source chain, the target chain could accept it as a valid message by verification mechnisms (like Avalanche's BLS-Aggregation, IBC's Light Client, and Zero-Knowledge, etc.). The finalization process spends at least one consensus epoch (more epochs for Bitcoin, Ethereum2.0, etc.). Essentially, message finalization means that the message could be verified by outside entities (also called Verifier). Missing finalization means missing security guaranteed by underlying decentralized blockchains. <u>*In one word, the message is first finalized, then transmitted and finally verified.*</u> It is the traditional cross-chain protocol abstract paradigm.
 
 <!-- <u>**Core Idea with One-Word:**</u> -->
 
