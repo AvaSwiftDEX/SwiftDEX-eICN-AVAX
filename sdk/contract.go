@@ -17,6 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/SR2PC"
+	"github.com/kimroniny/SuperRunner-eICN-eth2/constants"
 	ethclientext "github.com/kimroniny/SuperRunner-eICN-eth2/ethclientExt"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/logger"
 	"github.com/sirupsen/logrus"
@@ -379,7 +380,7 @@ func (sdk *ContractSDK) CrossReceive(cm *SR2PC.CrossMessage, proof *[]byte) {
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = big.NewInt(0)
 	auth.GasLimit = uint64(4000000)
-	gasPrice := 100
+	gasPrice := constants.GasFee
 	auth.GasPrice = big.NewInt(int64(gasPrice))
 
 	// send transaction
@@ -471,8 +472,8 @@ func (sdk *ContractSDK) SyncHeader(data *HeaderData) {
 	// set auth
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = big.NewInt(0)
-	auth.GasLimit = uint64(400000000)
-	gasPrice := 10
+	auth.GasLimit = uint64(10000000)
+	gasPrice := constants.GasFee
 	auth.GasPrice = big.NewInt(int64(gasPrice))
 
 	// sdk.HttpClient.EstimateGas()
@@ -577,7 +578,7 @@ func (sdk *ContractSDK) CrossRetry(identifier string, cm *SR2PC.CrossMessage, ro
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = big.NewInt(0)
 	auth.GasLimit = uint64(4000000)
-	gasPrice := 100
+	gasPrice := constants.GasFee
 	auth.GasPrice = big.NewInt(int64(gasPrice))
 
 	// send transaction
