@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/SR2PC/AppState"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/config"
+	"github.com/kimroniny/SuperRunner-eICN-eth2/constants"
 	ethclientext "github.com/kimroniny/SuperRunner-eICN-eth2/ethclientExt"
 )
 
@@ -55,9 +56,9 @@ func InitAppStateValues(ctx context.Context, config *config.Config, args InitApp
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = big.NewInt(0)
-	auth.GasLimit = uint64(600000000)
+	auth.GasLimit = uint64(10000000)
 	fmt.Println("gas tip: ", auth.GasLimit)
-	gasPrice := 10
+	gasPrice := constants.GasFee
 	auth.GasPrice = big.NewInt(int64(gasPrice))
 
 	// get instance

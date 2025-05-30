@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/SR2PC"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/config"
+	"github.com/kimroniny/SuperRunner-eICN-eth2/constants"
 	ethclientext "github.com/kimroniny/SuperRunner-eICN-eth2/ethclientExt"
 )
 
@@ -146,7 +147,7 @@ func CrossSendWorkload(ctx context.Context, config *config.Config, workerCfgs []
 	fmt.Println("gas tip: ", auth.GasLimit)
 
 	// set gas price
-	gasPrice := 10
+	gasPrice := constants.GasFee
 	auth.GasPrice = big.NewInt(int64(gasPrice))
 
 	// set value

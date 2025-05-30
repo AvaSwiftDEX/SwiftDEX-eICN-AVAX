@@ -17,6 +17,7 @@ import (
 	"github.com/kimroniny/SuperRunner-eICN-eth2/SR2PC/AppState"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/SR2PC/Filter"
 	"github.com/kimroniny/SuperRunner-eICN-eth2/config"
+	"github.com/kimroniny/SuperRunner-eICN-eth2/constants"
 	ethclientext "github.com/kimroniny/SuperRunner-eICN-eth2/ethclientExt"
 )
 
@@ -56,7 +57,7 @@ func Deploy(ctx context.Context, config *config.Config) (common.Address, error) 
 	auth.Value = big.NewInt(0)
 	auth.GasLimit = uint64(6000000)
 	fmt.Println("gas tip: ", auth.GasLimit)
-	gasPrice := 10
+	gasPrice := constants.GasFee
 	auth.GasPrice = big.NewInt(int64(gasPrice))
 
 	_chainId := config.Chain.ID
@@ -120,7 +121,7 @@ func DeployLibraries(ctx context.Context, config *config.Config) (common.Address
 	auth.Value = big.NewInt(0)
 	auth.GasLimit = uint64(6000000)
 	fmt.Println("gas tip: ", auth.GasLimit)
-	gasPrice := 10
+	gasPrice := constants.GasFee
 	auth.GasPrice = big.NewInt(int64(gasPrice))
 
 	address, tx, instance, err := Filter.DeployFilter(auth, client)
@@ -178,7 +179,7 @@ func DeployAppState(ctx context.Context, config *config.Config) (common.Address,
 	auth.Value = big.NewInt(0)
 	auth.GasLimit = uint64(6000000)
 	fmt.Println("gas tip: ", auth.GasLimit)
-	gasPrice := 10
+	gasPrice := constants.GasFee
 	auth.GasPrice = big.NewInt(int64(gasPrice))
 
 	address, tx, instance, err := AppState.DeployAppState(auth, client)
@@ -236,7 +237,7 @@ func RegisterAppState(ctx context.Context, config *config.Config) error {
 	auth.Value = big.NewInt(0)
 	auth.GasLimit = uint64(6000000)
 	fmt.Println("gas tip: ", auth.GasLimit)
-	gasPrice := 10
+	gasPrice := constants.GasFee
 	auth.GasPrice = big.NewInt(int64(gasPrice))
 
 	// get instance
