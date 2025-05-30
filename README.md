@@ -10,24 +10,30 @@ A figure (finally to do it)
 
 ## Introduction
 
-<u>**Slow Interoperations:**</u>
+<!-- <u>**Slow Interoperations:**</u> -->
+
+### Motivation: Slow Interoperation and Why
 
 Traditional cross-chain protocols (Avalanche, Chainlink, Cosmos, etc.) face the High-Latency bottleneck.
 
-<u>**Why Slow:**</u>
+<!-- <u>**Why Slow:**</u> -->
+
+<!-- ### Why Slow: -->
 
 It is a fact that, only when the cross-chain message is finalized (or with a extreme-high probability) on the source chain, the target chain could accept it as a valid message by verification mechnisms (like Avalanche's BLS-Aggregation, IBC's Light Client, and Zero-Knowledge, etc.). The finalization process spends at least one consensus epoch (more epochs for Bitcoin, Ethereum2.0, etc.). Essentially, message finalization means that the message could be verified by outside entities (also called Verifier). Missing finalization means missing security guaranteed by underlying decentralized blockchains. **In one word, the message is first finalized, then transmitted and finally verified.** It is the traditional cross-chain protocol abstract paradigm.
 
-<u>**Core Idea with One-Word:**</u>
+<!-- <u>**Core Idea with One-Word:**</u> -->
 
-Any message is always generated before finalization (It is the First Principle). Since the message has generated, then **DO NOT wait finalization**. Just asynchronize finalization, transmission, and verification.
+### SwiftDEX: Not Wait Finalization
 
-<u>**SwiftDEX:**</u>
+**Core Idea:** Any message is always generated before finalization (It is the First Principle). Since the message has generated, then <u>*DO NOT wait finalization*</u>. Just asynchronize finalization, transmission, and verification.
 
-We propose *SwiftDEX* protocol, achieving <u>*swift*</u>, <u>*atomic*</u> cross-chain exchange without any <u>*security*</u> loss. It introduces the following cutting-edge technologies:
+<!-- <u>**SwiftDEX:**</u> -->
+
+We propose <u>*SwiftDEX*</u> protocol, achieving <u>*swift*</u>, <u>*atomic*</u> cross-chain exchange without any <u>*security*</u> loss. It introduces the following cutting-edge technologies:
 
 - *Post-Finality:* It is the fundamental sub-protocol of SwiftDEX. Post-Finality achieves the core idea of asynchronizing finalization, transmission and verification. With it, we could build the following Unstable Cross-chain message and Dual Lock.
-- *UNSTABLE Cross-chain Message:* It is the **Pivotal, Critical, Core, Key** component to reduce atomic interoperation latency. However, it is also extremly easy while ignored by most researchers and developers. The message's unstability could reduce latency about 50%.
+- *UNSTABLE Cross-chain Message:* It is the **Pivotal, Critical, Core, Key** component to reduce atomic interoperation latency. However, it is also extremly easy while ignored by most researchers and developers. The message's unstability could reduce latency about 36%.
 - *Dual Lock:* For some Non-Fungible Token/Asset/State, the Dual Lock could avoid dirty/repeatable/phantom read or write operations.
 
 <!-- 
@@ -39,15 +45,19 @@ We propose *SwiftDEX* protocol, achieving <u>*swift*</u>, <u>*atomic*</u> cross-
   - SwiftDEX, pro 
 -->
 
-<u>**Practical Considerations:**</u>
+<!-- <u>**Practical Considerations:**</u> -->
 
-- All in smart contracts.
-- Suitable for all kinds of blockchains without any hard-fork invasion.
+### Practical Considerations
+
+- All in smart contracts without introducing any other trusted third-parties.
+- Suitable for all kinds of blockchains (First Principle), without any hard-fork invasion.
 - Compatible with existing verification mechanisms, like BLS-Aggregation, Light Client, Zero-Knowledge, etc.
   
-<u>**Efficiency:**</u>
+<!-- <u>**Efficiency:**</u> -->
 
-Until now, we have conducted some evaluations in a local cross-chain network (including Ethereum, and Avalanche). The result shows that the latency has reduced 50%.
+### Efficiency
+
+Until now, we have conducted some evaluations in a local cross-chain network (including Ethereum, and Avalanche). The result shows that the latency has reduced 36%.
 
 Next, we will conduct more evaluations in a geo-distributed cross-chain network with more complex DApps (like defi, nft, supply chain, etc.) and scenarios. And, we will also adapt SwiftDEX to other homogeneous/heterogeneous blockchains to emphasize its practicality.
 
@@ -147,6 +157,8 @@ bash evaluation/onestep/3/start_avalanche.sh
 ```shell
 bash evaluation/onestep/3/start.sh 
 ```
+
+> NOTE: at present, we can not open-source SwiftDEX's on-chain contract code, because the related reseach paper has not been published. Once the paper accepted, we will open-source the core contracts.
 
 #### watching interoperation
 
