@@ -8,6 +8,11 @@ A figure (finally to do it)
 
  -->
 
+![SwiftDEX Architecture](images/swiftdex.png)
+
+<!-- *Figure 1: SwiftDEX Architecture. The protocol introduces Post-Finality, UNSTABLE Cross-chain Message, and Dual Lock mechanisms to achieve swift, atomic and secure cross-chain exchanges. Messages are transmitted immediately after generation without waiting for finalization, while verification is performed asynchronously to maintain security.* -->
+
+
 ## Introduction
 
 <!-- <u>**Slow Interoperations:**</u> -->
