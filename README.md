@@ -1,8 +1,87 @@
-# SuperRunner-eICN for Ethereum2.0
+# SwiftDEX: A Swift, Atomic and Secure Cross-Chain Exchange Protocol
 
-## Prerequisites
+<!-- 
 
-### solc
+Abstract: what is SwiftDEX, core technologies, and efficiency, features (especially reproducibility, practicality)
+
+A figure (finally to do it)
+
+ -->
+
+## Introduction
+
+<u>**Slow Interoperations:**</u>
+
+Traditional cross-chain protocols (Avalanche, Chainlink, Cosmos, etc.) face the High-Latency bottleneck.
+
+<u>**Why Slow:**</u>
+
+It is a fact that, only when the cross-chain message is finalized (or with a extreme-high probability) on the source chain, the target chain could accept it as a valid message by verification mechnisms (like Avalanche's BLS-Aggregation, IBC's Light Client, and Zero-Knowledge, etc.). The finalization process spends at least one consensus epoch (more epochs for Bitcoin, Ethereum2.0, etc.). Essentially, message finalization means that the message could be verified by outside entities (also called Verifier). Missing finalization means missing security guaranteed by underlying decentralized blockchains. **In one word, the message is first finalized, then transmitted and finally verified.** It is the traditional cross-chain protocol abstract paradigm.
+
+<u>**Core Idea with One-Word:**</u>
+
+Any message is always generated before finalization (It is the First Principle). Since the message has generated, then **DO NOT wait finalization**. Just asynchronize finalization, transmission, and verification.
+
+<u>**SwiftDEX:**</u>
+
+We propose *SwiftDEX* protocol, achieving <u>*swift*</u>, <u>*atomic*</u> cross-chain exchange without any <u>*security*</u> loss. It introduces the following cutting-edge technologies:
+
+- *Post-Finality:* It is the fundamental sub-protocol of SwiftDEX. Post-Finality achieves the core idea of asynchronizing finalization, transmission and verification. With it, we could build the following Unstable Cross-chain message and Dual Lock.
+- *UNSTABLE Cross-chain Message:* It is the **Pivotal, Critical, Core, Key** component to reduce atomic interoperation latency. However, it is also extremly easy while ignored by most researchers and developers. The message's unstability could reduce latency about 50%.
+- *Dual Lock:* For some Non-Fungible Token/Asset/State, the Dual Lock could avoid dirty/repeatable/phantom read or write operations.
+
+<!-- 
+**Challenges:**
+
+- (*Secure*) How to guarantee message validity?
+  - We propose the one-way protocol 
+- (*Atomic*) How to keep atomicity?
+  - SwiftDEX, pro 
+-->
+
+<u>**Practical Considerations:**</u>
+
+- All in smart contracts.
+- Suitable for all kinds of blockchains without any hard-fork invasion.
+- Compatible with existing verification mechanisms, like BLS-Aggregation, Light Client, Zero-Knowledge, etc.
+  
+<u>**Efficiency:**</u>
+
+Until now, we have conducted some evaluations in a local cross-chain network (including Ethereum, and Avalanche). The result shows that the latency has reduced 50%.
+
+Next, we will conduct more evaluations in a geo-distributed cross-chain network with more complex DApps (like defi, nft, supply chain, etc.) and scenarios. And, we will also adapt SwiftDEX to other homogeneous/heterogeneous blockchains to emphasize its practicality.
+
+## Implementation on Avalanche
+
+We implement SwiftDEX in smart contracts by solidity for on-chain logic.
+
+And the off-chain relayer (also called eICN) connecting different Avalanche C-Chains is also customized by golang.
+
+Because this project is still a Proof-of-Concept which focuses on the core functionalities and technology, some interactive components (like UI, beautiful interactive operations, etc.) are listed as future work.
+
+During research and development, we also produce some necessary avalanche tools, like multi-chain creation, deployment, and SDK (by golang), contract compiling&deployment (by golang) etc.
+
+### Prerequisites
+
+The contract is:
+
+- written by solidity:v0.8.2,
+- compiled by solc:v0.8.2, abigen:v1.15.0, protoc:v24.3,
+- depoyed by ethclient:v1.15.0 with golang:v1.22.12。
+
+The off-chain relayer (also called eICN), and metrics collector (for evaluation) are written by golang:v1.22.12。
+
+The evaluation script is written by python:v3.8.10, and managed by pipenv.
+
+#### pipenv
+
+```bash
+pip install pipenv
+pipenv shell --python 'your python:v3.8.10 path'
+pipenv install
+```
+
+#### solc
 
 ```bash
 pip install solc-select
@@ -10,7 +89,7 @@ solc-select install 0.8.2
 solc-select use 0.8.2
 ```
 
-### protoc
+#### protoc
 
 ```bash
 # Download latest release
@@ -33,7 +112,7 @@ go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 export PATH="$PATH:$(go env GOPATH)/bin"
 ```
 
-### abigen
+#### abigen
 
 ```bash
 # install abigen in go-ethereum
@@ -43,51 +122,46 @@ make
 make devtools
 ```
 
-<!-- ## Compile contracts
+### Deploy and Execute
 
-```bash
-# generate abi and bin for contract SR2PC
-solc --abi --bin --overwrite --optimize --optimize-runs 200 -o output ../SuperRunner-Contracts/contracts/2pc-master/SR2PC.sol --allow-paths .
-# generate .go
-mkdir SR2PC
-abigen --bin=output/SR2PC.bin --abi=output/SR2PC.abi --pkg=SR2PC --out=SR2PC/SR2PC.go
-``` -->
+We create a basic local cross-chain network (based on Avalanche) with 3 C-Chains.
 
-## start geth dev mode
+The blockchain creation&deployment, and contract compiling&deployment, and off-chain relayers setup all are in following scripts.
 
-```bash
-geth --dev --dev.period 3 --keystore ./node/keystore --allow-insecure-unlock --http --http.api eth,web3,net,miner,txpool,admin --ws --ws.api eth,web3,net --http.port 8545 --ws.port 8546
+To achieve auto-mining in avalanche local-net, we also start a background process to send transactions continuously. (We do not find any command for auto-mining).
+
+#### creation
+
+```shell
+bash evaluation/onestep/3/create_avalanche.sh
 ```
 
-## start metrics collector
+#### deploy c-chains
 
-```bash
-./metrics/run_metrics.sh
+```shell
+bash evaluation/onestep/3/start_avalanche.sh
 ```
 
-## deploy contract
+#### contracts, relayers and metrics collector
 
-```bash
-# compile and deploy the lib Filter
-# then compile and deploy the contract SR2PC
-# this script strictly requires the contract and library path
-./scripts/deploy.sh --config=config.yaml
+```shell
+bash evaluation/onestep/3/start.sh 
 ```
 
-## start eICN
+#### watching interoperation
 
-```bash
-go run main.go --config=config.yaml --log=logs/1.log
+Start another shell (named Shell-B), and run the following command to watch the whole cross-chain process.
+
+```shell
+bash ./analysis/run_analysis.sh 1 test evaluation/configs/config1.yaml,evaluation/configs/config2.yaml,evaluation/configs/config3.yaml false 
 ```
 
-## regist eICN
+#### send cross-chain transaction
 
-```bash
-./scripts/regist_eICN.sh --config=config.yaml --target-config=target_config.yaml
+Start another shell, and run the following command to send a cross-chain tranasaction.
+
+```shell
+bash ./scripts/cross_send.sh --chain-ids="2,3" --value="10" --app-identifier="State" --app-value-id="0" --config=evaluation/configs/config1.yaml
 ```
 
-## send cross-chain message
-
-```bash
-./scripts/cross_send.sh --chain-ids="1,2,3" --value="100" --config=config.yaml
-```
+After execution, in Shell-B, you will see the intermediate data is output continuously.
